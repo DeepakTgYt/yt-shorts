@@ -1,6 +1,7 @@
 {
  "posted": [
-  "https://t.me/Railway_Job_Notification_Quiz/157"
+  "https://t.me/Railway_Job_Notification_Quiz/157",
+  "https://t.me/Bihar_Job_Notification_Quiz/150"
  ],
  "used_q": [],
  "fps": [
@@ -19,6 +20,20 @@
     "station"
    ],
    "t": "2026-11-17"
+  },
+  {
+   "n": 3,
+   "w": [
+    "civil",
+    "clerk",
+    "court",
+    "offline",
+    "orderly",
+    "patna",
+    "peon",
+    "stenographer"
+   ],
+   "t": "2026-11-17"
   }
  ],
  "log": [
@@ -35,10 +50,19 @@
    "railway",
    "_CBbU3cT_4s",
    "neon"
+  ],
+  [
+   "2026-11-17T21:26+05:30",
+   "vacancy",
+   "bihar",
+   "qagmnqn3bU0",
+   "paper"
   ]
  ],
- "slots": [],
- "n": 2,
+ "slots": [
+  "2026-11-17 20:30"
+ ],
+ "n": 3,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg"
 }
