@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+# generated media: never commit (keeps the repo small forever)
+out/*
+!out/.gitkeep
+*.mp4
+*.m4v
+*.mov
+*.wav
+*.tmp
+*.log
+/tmp/
+state/*.tmp
+repo.bundle
+state-bank.tgz
+
+shorts/assets/tts_cache/

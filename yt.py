@@ -1,0 +1,532 @@
+"""YouTube Shorts for the Job Notification & Quiz channels (v2: voiceover + motion graphics).
+
+    python yt.py auto|quiz|vacancy|breaking [--dry]
+
+auto     : the IST slot that is due now (SLOTS below), each slot runs once a day
+quiz     : PYQ quiz Short (hook + question, A-D pop, 5-1 countdown, reveal, व्याख्या, loop) ~22 s
+vacancy  : newest recruitment from our Telegram channels (15-22 s), falls back to quiz when none is new
+breaking : only 1000+ post recruitments, posted the moment they appear (max 3/day)
+
+Upload: YouTube Data API v3 videos.insert (resumable) + thumbnails.set, OAuth refresh token.
+Secrets: YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN. Missing => dry run (renders, no upload).
+State: state/yt.json (committed back by the workflow).
+"""
+import html, json, os, random, re, sys, time, urllib.parse, urllib.request
+from datetime import datetime, timezone, timedelta
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, "shorts"))
+OUT = os.path.join(HERE, "out")
+STATE = os.path.join(HERE, "state", "yt.json")
+IST = timezone(timedelta(hours=5, minutes=30))
+DRY = "--dry" in sys.argv or not os.environ.get("YT_REFRESH_TOKEN")
+TG_HUB = "https://tg.jobnotificationquiz.workers.dev/tg"
+CH = {"ssc": "SSC_Job_Alert", "railway": "Railway_Job_Notification_Quiz",
+      "bihar": "Bihar_Job_Notification_Quiz", "army": "Army_Agniveer_Bharti_Alert"}
+CH_NAME = {"ssc": "SSC", "railway": "Railway", "bihar": "Bihar", "army": "Army/Agniveer"}
+ORDER = ["ssc", "railway", "bihar", "army"]
+# IST slot -> mode. 9 Shorts a day + breaking. vacancy falls back to quiz when nothing new.
+SLOTS = [("07:30", "quiz"), ("09:00", "quiz"), ("10:30", "vacancy"), ("12:00", "quiz"), ("13:30", "quiz"),
+         ("15:30", "vacancy"), ("17:30", "quiz"), ("19:00", "quiz"), ("20:30", "vacancy")]
+DAILY_CAP, BREAKING_CAP = 10, 3
+TAGS = {"ssc": ["SSC", "SSC GD", "SSC CGL", "SSC MTS", "SSC CHSL", "ssc gk", "ssc pyq", "ssc gd gk", "एसएससी"],
+        "railway": ["Railway", "RRB NTPC", "RRB Group D", "RRB ALP", "railway gk", "railway bharti", "rrb gk", "रेलवे"],
+        "bihar": ["Bihar", "Bihar Police", "BPSC", "BSSC", "bihar gk", "bihar police gk", "bihar sarkari naukri", "बिहार"],
+        "army": ["Agniveer", "Army bharti", "Agniveer GD", "Indian Army", "agniveer gk", "army gk", "अग्निवीर"]}
+COMMON_TAGS = ["sarkari naukri", "govt jobs", "gk quiz", "gk in hindi", "gk questions", "general knowledge",
+               "previous year questions", "sarkari result", "job notification", "सरकारी नौकरी", "जीके क्विज़",
+               "current affairs hindi", "competitive exam", "shorts"]
+HASHTAGS = {"ssc": ["#SSC", "#SSCGD", "#SSCCGL"], "railway": ["#Railway", "#RRBNTPC", "#RRBGroupD"],
+            "bihar": ["#BiharPolice", "#BPSC", "#BiharGK"], "army": ["#Agniveer", "#IndianArmy", "#ArmyBharti"]}
+
+
+def tags_for(theme, extra=()):
+    """Specific first, then broad; deduped; within YouTube's 500-char tag budget."""
+    import datetime as _dt
+    yr = _dt.datetime.now().year
+    pool = list(extra) + TAGS.get(theme, []) + COMMON_TAGS + [f"vacancy {yr}", f"bharti {yr}"]
+    out, seen, n = [], set(), 0
+    for t in pool:
+        k = t.lower().strip()
+        if not k or k in seen:
+            continue
+        cost = len(t) + (2 if " " in t else 0) + 1
+        if n + cost > 480:
+            break
+        out.append(t); seen.add(k); n += cost
+    return out
+
+
+def hashtag_line(theme, kind):
+    """3 most relevant first (YouTube shows them above the title), max 7 total."""
+    first = {"quiz": "#GKQuiz", "vacancy": "#SarkariNaukri", "breaking": "#SarkariNaukri"}.get(kind, "#SarkariNaukri")
+    tags = ["#Shorts", HASHTAGS.get(theme, ["#SarkariNaukri"])[0], first] + HASHTAGS.get(theme, [])[1:] + \
+        ["#GovtJobs", "#GKinHindi"]
+    out = []
+    for t in tags:
+        if t not in out:
+            out.append(t)
+    return " ".join(out[:7])
+
+
+QUIZ_HOOKS = [  # (on-screen, spoken) - truthful, no invented numbers
+    ("5 सेकंड में जवाब दो!", "पाँच सेकंड में जवाब दो!"),
+    ("आपका जवाब क्या है?", "बताइए, आपका जवाब क्या है?"),
+    ("पिछली परीक्षा का असली सवाल", "पिछली परीक्षा का असली सवाल!"),
+    ("सही जवाब दो, तो मान जाएँ!", "सही जवाब दो, तो मान जाएँ!"),
+    ("परीक्षा में आया था ये सवाल", "परीक्षा में आया था ये सवाल!"),
+    ("कमेंट में जवाब लिखो 👇", "कमेंट में जवाब लिखो!"),
+    ("तैयारी चेक करो!", "अपनी तैयारी चेक करो!"),
+]
+CTA = [("हर नोटिफिकेशन 5–8 मिनट में Telegram पर", "हर नोटिफिकेशन, पाँच से आठ मिनट में, हमारे टेलीग्राम पर!"),
+       ("नोटिफिकेशन आते ही Telegram पर, सबसे पहले", "नोटिफिकेशन आते ही, सबसे पहले, हमारे टेलीग्राम पर!"),
+       ("रोज़ के सवाल + भर्ती अपडेट Telegram पर", "रोज़ के सवाल और हर भर्ती, पाँच से आठ मिनट में टेलीग्राम पर!")]
+
+
+def now():
+    return datetime.now(IST)
+
+
+def load():
+    try:
+        s = json.load(open(STATE))
+    except Exception:
+        s = {}
+    for k, v in (("posted", []), ("used_q", []), ("fps", []), ("log", []), ("slots", []), ("n", 0)):
+        s.setdefault(k, v)
+    return s
+
+
+def save(s):
+    s["posted"] = s["posted"][-600:]; s["log"] = s["log"][-400:]; s["fps"] = s["fps"][-200:]
+    s["slots"] = s["slots"][-60:]
+    os.makedirs(os.path.dirname(STATE), exist_ok=True)
+    json.dump(s, open(STATE + ".tmp", "w"), ensure_ascii=False, indent=1)
+    os.replace(STATE + ".tmp", STATE)
+
+
+def today_count(s, mode=None):
+    d = now().strftime("%Y-%m-%d")
+    return len([e for e in s["log"] if e[0].startswith(d) and (mode is None or e[1] == mode) and e[3] != "dryrun"])
+
+
+def due_slot(s, window_min=100):
+    """The latest slot whose time has passed (within window) and that has not run today."""
+    n = now()
+    best = None
+    for hm, mode in SLOTS:
+        h, m = map(int, hm.split(":"))
+        t = n.replace(hour=h, minute=m, second=0, microsecond=0)
+        key = t.strftime("%Y-%m-%d ") + hm
+        if t <= n + timedelta(minutes=3) and (n - t).total_seconds() <= window_min * 60 and key not in s["slots"]:
+            best = (key, mode)
+    return best
+
+
+# ---------------- sources: our own public Telegram channels ----------------
+def scrape(theme):
+    url = f"https://t.me/s/{CH[theme]}"
+    h = urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=30).read().decode()
+    items = []
+    for blk in re.split(r'<div class="tgme_widget_message_wrap', h)[1:]:
+        m = re.search(r'js-message_text" dir="auto">(.*?)</div>', blk, re.S)
+        link = re.search(r'tgme_widget_message_date" href="([^"]+)"', blk)
+        dt = re.search(r'<time datetime="([^"]+)"', blk)
+        if not m:
+            continue
+        t = html.unescape(re.sub(r"<br\s*/?>", "\n", m.group(1)))
+        t = re.sub(r"<[^>]+>", "", t)
+        if "NEW VACANCY" not in t and "नई भर्ती" not in t:
+            continue
+        items.append({"text": t, "key": link.group(1) if link else t[:60], "date": dt.group(1) if dt else ""})
+    return items
+
+
+def field(t, *labels):
+    for lab in labels:
+        m = re.search(lab + r"[^:\n]*:\s*([^\n]+)", t)
+        if m:
+            return m.group(1).strip()
+    return ""
+
+
+def vac_title(t):
+    m = re.search(r"📌\s*([^\n]+)", t)
+    title = m.group(1).strip() if m else t.split("\n")[0]
+    return title[:160]
+
+
+def short_title(title):
+    x = re.sub(r"\s*[–-]\s*(Apply|Online|Download).*$", "", title, flags=re.I)
+    x = re.sub(r"\b(Notification Out|Reopened)\b", "", x, flags=re.I)
+    return re.sub(r"\s{2,}", " ", x).strip(" -–")[:90]
+
+
+def post_count(t, title):
+    tot = field(t, "Total Vacancy", "Total Post", "कुल पद")
+    if tot and re.search(r"\d", tot):
+        return int(re.sub(r"\D", "", tot)[:7])
+    m = re.search(r"(?:for|of)\s+(\d[\d,]*)\s+", title, re.I) or re.search(r"(\d[\d,]{2,})\s+(?:Posts?|पद|Vacanc)", t, re.I)
+    return int(re.sub(r"\D", "", m.group(1))[:7]) if m else 0
+
+
+def vac_facts(t):
+    f = []
+    last = field(t, r"Last Date \(Apply\)", "आवेदन की अंतिम तिथि", "Last Date", "अंतिम तिथि")
+    if last:
+        f.append(("अंतिम तिथि", re.sub(r"\s*\(.*", "", last)[:26]))
+    age = field(t, "Age Limit", "आयु सीमा")
+    if age and re.search(r"\d", age):
+        f.append(("आयु सीमा", age.replace("Years", "वर्ष").replace("Year", "वर्ष")[:26]))
+    fee = re.search(r"(?:General|Gen|UR)[^:\n]*:\s*(?:Rs\.?\s*)?(\d[\d,]*)", t)
+    if fee:
+        f.append(("आवेदन शुल्क (सामान्य)", f"₹{fee.group(1)}"))
+    elig = field(t, "Qualification", "योग्यता", "Eligibility")
+    if elig and len(f) < 3:
+        f.append(("योग्यता", elig[:40]))
+    site = field(t, "Official Website")
+    if site and len(f) < 3:
+        f.append(("ऑफिशियल वेबसाइट", site[:30]))
+    if len(f) < 3 and ("आवेदन जारी" in t or "chalu" in t):
+        f.append(("स्थिति", "ऑनलाइन आवेदन जारी"))
+    nd = field(t, "Notice Date", "सूचना तिथि")
+    if len(f) < 3 and nd:
+        f.append(("सूचना तिथि", nd.split(",")[0][:24]))
+    return f[:3]
+
+
+def days_left(t):
+    m = re.search(r"(\d+)\s*दिन शेष", t) or re.search(r"Sirf (\d+) din", t)
+    return int(m.group(1)) if m else None
+
+
+def fingerprint(title, n):
+    w = sorted(set(re.findall(r"[a-z0-9]{3,}", title.lower())) - {"recruitment", "online", "apply", "form", "posts",
+                                                                   "post", "for", "and", "the", "2026", "2027", "more"})
+    return {"n": n, "w": w[:10], "t": now().strftime("%Y-%m-%d")}
+
+
+def is_dupe(s, fp):
+    cut = (now() - timedelta(days=10)).strftime("%Y-%m-%d")
+    for o in s["fps"]:
+        if o["t"] < cut:
+            continue
+        if fp["n"] >= 50 and o["n"] == fp["n"]:
+            return True
+        a, b = set(fp["w"]), set(o["w"])
+        if a and b and len(a & b) / min(len(a), len(b)) >= 0.75:
+            return True
+    return False
+
+
+def num_hi(n):
+    return f"{n:,}".replace(",", ",")
+
+
+# ---------------- text ----------------
+def roman_exam(q, theme):
+    src = q.get("src") or ""
+    name = re.sub(r"\s*[·,].*", "", src).strip()
+    name = re.sub(r"\s+(19|20)\d\d$", "", name)
+    yr = re.search(r"(20\d\d)", src)
+    if not name:
+        name = {"ssc": "SSC", "railway": "RRB", "bihar": "Bihar Police", "army": "Agniveer GD"}[theme]
+    return name, (yr.group(1) if yr else "")
+
+
+def say_exam(name):
+    m = {"SSC": "एसएससी", "CGL": "सीजीएल", "CHSL": "सीएचएसएल", "MTS": "एमटीएस", "GD": "जीडी", "RRB": "आरआरबी",
+         "NTPC": "एनटीपीसी", "ALP": "एएलपी", "JE": "जेई", "CPO": "सीपीओ", "Constable": "कांस्टेबल",
+         "Group": "ग्रुप", "D": "डी", "Bihar": "बिहार", "Police": "पुलिस", "Agniveer": "अग्निवीर"}
+    return " ".join(m.get(w, w) for w in name.split())
+
+
+def description(theme, lines, channel_url=None, kind="quiz"):
+    links = [f"SSC: https://t.me/{CH['ssc']}", f"Railway: https://t.me/{CH['railway']}",
+             f"Bihar: https://t.me/{CH['bihar']}", f"Army/Agniveer: https://t.me/{CH['army']}"]
+    out = lines + ["", "⚡ हर नई भर्ती का नोटिफिकेशन आते ही 5–8 मिनट में हमारे Telegram पर:", TG_HUB, ""] + links
+    out += ["", "📸 Instagram: https://www.instagram.com/sarkari_job_notification_quiz/",
+            "📘 Facebook: https://www.facebook.com/profile.php?id=61596323014208"]
+    if channel_url:
+        out += ["", "▶️ रोज़ नए सवाल और भर्ती अपडेट, Subscribe करें:", channel_url + "?sub_confirmation=1"]
+    out += ["", hashtag_line(theme, kind)]
+    return "\n".join(out)
+
+
+# ---------------- YouTube API ----------------
+_TOK = {}
+
+
+def access_token():
+    if "t" in _TOK:
+        return _TOK["t"]
+    data = urllib.parse.urlencode({"client_id": os.environ["YT_CLIENT_ID"], "client_secret": os.environ["YT_CLIENT_SECRET"],
+                                   "refresh_token": os.environ["YT_REFRESH_TOKEN"], "grant_type": "refresh_token"}).encode()
+    with urllib.request.urlopen("https://oauth2.googleapis.com/token", data, timeout=30) as r:
+        _TOK["t"] = json.load(r)["access_token"]
+    return _TOK["t"]
+
+
+def api(method, url, body=None, ctype="application/json; charset=UTF-8", timeout=60):
+    req = urllib.request.Request(url, data=body, method=method,
+                                 headers={"Authorization": f"Bearer {access_token()}", "Content-Type": ctype})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        raw = r.read()
+        return json.loads(raw) if raw else {}
+
+
+def channel_url(s):
+    if DRY:
+        return None
+    if not s.get("channel_url"):
+        try:
+            it = api("GET", "https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true")["items"][0]
+            cu = it["snippet"].get("customUrl")
+            s["channel_url"] = f"https://www.youtube.com/{cu}" if cu else f"https://www.youtube.com/channel/{it['id']}"
+        except Exception as e:
+            print("channel lookup failed:", str(e)[:200])
+            return None
+    return s["channel_url"]
+
+
+def upload(mp4, thumb, title, desc, tags):
+    title = title[:100]
+    if DRY:
+        print("DRY RUN upload:", title, "\n", desc[:500]); return "dryrun"
+    meta = {"snippet": {"title": title, "description": desc[:4900], "tags": tags, "categoryId": "27",
+                        "defaultLanguage": "hi", "defaultAudioLanguage": "hi"},
+            "status": {"privacyStatus": "public", "selfDeclaredMadeForKids": False,
+                       "containsSyntheticMedia": os.environ.get("SYNTHETIC_FLAG", "1") == "1"}}
+    size = os.path.getsize(mp4)
+    vid = None
+    for attempt in range(4):
+        try:
+            req = urllib.request.Request(
+                "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
+                data=json.dumps(meta).encode(), method="POST",
+                headers={"Authorization": f"Bearer {access_token()}", "Content-Type": "application/json; charset=UTF-8",
+                         "X-Upload-Content-Type": "video/mp4", "X-Upload-Content-Length": str(size)})
+            with urllib.request.urlopen(req, timeout=60) as r:
+                loc = r.headers["Location"]
+            req = urllib.request.Request(loc, data=open(mp4, "rb").read(), method="PUT",
+                                         headers={"Authorization": f"Bearer {access_token()}", "Content-Type": "video/mp4"})
+            with urllib.request.urlopen(req, timeout=900) as r:
+                vid = json.load(r)["id"]
+            break
+        except urllib.error.HTTPError as e:
+            body = e.read().decode()[:500]; print("upload err", e.code, body)
+            if e.code < 500 and e.code != 429:
+                raise
+        except Exception as e:
+            print("upload err", str(e)[:200])
+        time.sleep(15 * (attempt + 1))
+    if not vid:
+        raise RuntimeError("upload failed")
+    print("uploaded https://youtube.com/shorts/" + vid)
+    try:  # custom thumbnail; skipped quietly if the channel can't set one yet
+        api("POST", f"https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId={vid}",
+            open(thumb, "rb").read(), ctype="image/jpeg")
+        print("thumbnail set")
+    except Exception as e:
+        print("thumbnail skipped:", str(e)[:200])
+    return vid
+
+
+# ---------------- modes ----------------
+def render(kind, d, s):
+    import make
+    os.makedirs(OUT, exist_ok=True)
+    out = os.path.join(OUT, "short.mp4")
+    lay = s["n"] % len(make.LAYOUTS)
+    info = make.make(kind, d, out, layout=lay, music_i=s["n"] // len(make.LAYOUTS) + s["n"])
+    if not info.get("voice"):
+        print("WARNING: rendered without voice")
+    return info
+
+
+def pick_q(s, bank, theme):
+    hin = lambda x: bool(re.search("[\u0900-\u097F]", x["q"])) and len(x["q"]) <= 135 and x.get("e") and max(len(o) for o in x["o"]) <= 45 \
+        and len(short_expl(x["e"])) <= 150
+    used = set(s["used_q"])
+    pool = [i for i, x in enumerate(bank) if x.get("exam") == theme and hin(x) and i not in used] or \
+           [i for i, x in enumerate(bank) if hin(x) and i not in used]
+    if pool:
+        return random.choice(pool)
+    raise RuntimeError("question bank used up: add new PYQs to bank/quiz.json")  # never repeat a question
+
+
+def short_expl(e, limit=110):
+    """First sentence(s) of the explanation (cut at a clause, never mid-word), so the Short stays short."""
+    parts = [x.strip() for x in re.split(r"(?<=[।!?])\s+|(?<=\.)\s+(?=[^\d])", e.strip()) if x.strip()]
+    out = ""
+    for x in parts:
+        if out and len(out) + len(x) > limit:
+            break
+        out = (out + " " + x).strip()
+    if len(out) > limit + 20:  # one long sentence: keep whole clauses up to the limit
+        cl = re.split(r"(?<=,)\s+", out)
+        cut = ""
+        for c in cl:
+            if cut and len(cut) + len(c) > limit:
+                break
+            cut = (cut + " " + c).strip()
+        out = cut.rstrip(",") + ("।" if not cut.endswith(("।", ".")) else "")
+    return out
+
+
+def do_quiz(s):
+    bank = json.load(open(os.path.join(HERE, "bank", "quiz.json")))
+    theme = ORDER[s["n"] % 4]
+    i = pick_q(s, bank, theme); q = bank[i]
+    theme = q.get("exam") if q.get("exam") in CH else theme
+    name, yr = roman_exam(q, theme)
+    hk, hk_say = QUIZ_HOOKS[s["n"] % len(QUIZ_HOOKS)]
+    cta = CTA[s["n"] % len(CTA)]
+    d = {"channel": theme, "badge": f"{name} {yr} PYQ".replace("  ", " "), "hook": hk, "hook_say": hk_say,
+         "thumb": f"{name} का सवाल" if len(name) < 16 else hk,
+         "question": q["q"], "options": q["o"], "answer": q["a"], "explanation": short_expl(q["e"]),
+         "source_line": f"स्रोत: {q['src']}" if q.get("src") else "", "cta_cap": cta[0], "cta_say": cta[1]}
+    info = render("quiz", d, s)
+    title = f"{name} {yr} GK Quiz | {hk.replace(' 👇', '')} 🧠 #shorts {HASHTAGS[theme][0]}".replace("  ", " ")
+    if len(title) > 95:
+        title = f"{name} GK Quiz | {hk.replace(' 👇', '')} #shorts"
+    desc = description(theme, [f"🧠 {q['q']}", ""] + [f"{'ABCD'[k]}) {o}" for k, o in enumerate(q["o"])] +
+                       ["", "👇 अपना जवाब कमेंट में लिखें, सही जवाब वीडियो के आखिर में।", "",
+                        f"📚 परीक्षा: {q.get('src') or name}"], channel_url(s))
+    vid = upload(info["out"], info["thumb"], title, desc, tags_for(theme, [f"{name} pyq", f"{name} gk", name, "PYQ"]))
+    s["used_q"].append(i)
+    return ["quiz", theme, vid, info["layout"]]
+
+
+def do_vacancy(s, min_posts=0):
+    start = s["n"] % 4
+    for k in range(4):
+        theme = ORDER[(start + k) % 4]
+        try:
+            items = scrape(theme)
+        except Exception as e:
+            print("scrape fail", theme, e); continue
+        fresh = [it for it in reversed(items) if it["key"] not in s["posted"]]
+        if not min_posts:  # only recent posts (last 36 h) for the normal slot
+            cut = (datetime.now(timezone.utc) - timedelta(hours=36)).isoformat()
+            fresh = [it for it in fresh if not it["date"] or it["date"] >= cut[:19]]
+        fresh.sort(key=lambda it: post_count(it["text"], vac_title(it["text"])), reverse=True)
+        for it in fresh:
+            title = vac_title(it["text"]); n = post_count(it["text"], title)
+            if min_posts and n < min_posts:
+                continue
+            fp = fingerprint(title, n)
+            if is_dupe(s, fp):
+                s["posted"].append(it["key"]); continue
+            st = short_title(title)
+            facts = vac_facts(it["text"])
+            dl = days_left(it["text"])
+            big = n >= 1000
+            tip = (f"सिर्फ {dl} दिन बाकी, आखिरी दिन का इंतज़ार मत करो!" if dl and dl <= 20 else
+                   "फॉर्म भरने से पहले योग्यता और आयु सीमा नोटिफिकेशन से ज़रूर मिलाएँ।")
+            cta = CTA[s["n"] % len(CTA)]
+            org = field(it["text"], "🏛") or ""
+            d = {"channel": theme, "badge": "🚨 बड़ी भर्ती".replace("🚨 ", "") if big else "नई भर्ती 2026",
+                 "hook": f"{num_hi(n)} पदों पर भर्ती!" if n else "नई सरकारी भर्ती आ गई!",
+                 "hook_say": (f"{num_hi(n)} पदों पर नई भर्ती!" if n else "नई सरकारी भर्ती आ गई!"),
+                 "post": st, "org": org, "vacancies": num_hi(n) if n else "", "facts": facts, "tip": tip,
+                 "cta_cap": cta[0], "cta_say": "पूरी डिटेल और आवेदन लिंक, " + cta[1]}
+            if not d["vacancies"]:
+                d.pop("vacancies")
+            info = render("vacancy", d, s)
+            ttl = (f"{st[:52]} | {num_hi(n)} पदों पर {'बड़ी' if big else 'नई'} भर्ती #shorts" if n else f"{st[:60]} | नई सरकारी भर्ती #shorts")
+            desc = description(theme, [("🚨 बड़ी भर्ती: " if big else "📢 नई भर्ती: ") + title, ""] +
+                               [f"✅ {a}: {b}" for a, b in facts] +
+                               ["", "आवेदन से पहले ऑफिशियल नोटिफिकेशन ज़रूर पढ़ें।",
+                                f"पूरी डिटेल, PDF और आवेदन लिंक: https://t.me/{CH[theme]}"], channel_url(s), kind="vacancy")
+            vid = upload(info["out"], info["thumb"], ttl, desc, tags_for(theme, ["new vacancy", "नई भर्ती", "latest vacancy"]))
+            s["posted"].append(it["key"]); s["fps"].append(fp)
+            return ["breaking" if min_posts else "vacancy", theme, vid, info["layout"]]
+    print("no new vacancy" + (" (1000+)" if min_posts else ""))
+    return None
+
+
+def do_welcome(s):
+    if s.get("welcome_vid"):
+        print("welcome already posted"); return None
+    d = json.load(open(os.path.join(HERE, "bank", "welcome.json"), encoding="utf-8"))
+    import make
+    os.makedirs(OUT, exist_ok=True)
+    info = make.make("welcome", d, os.path.join(OUT, "short.mp4"), layout=0, music_i=1)
+    title = "Job Notification Quiz में आपका स्वागत है 🙏 | SSC Railway Bihar Army #shorts"
+    desc = description("ssc", ["🙏 Job Notification Quiz में आपका स्वागत है!", "",
+                               "यहाँ रोज़ मिलेंगे पिछली परीक्षाओं के असली सवाल (PYQ) और हर नई सरकारी भर्ती की खबर।",
+                               "SSC, Railway, Bihar और Army/Agniveer, चारों के अलग Telegram चैनल।"], channel_url(s))
+    vid = upload(info["out"], info["thumb"], title, desc, tags_for("ssc", ["job notification quiz", "Railway", "Bihar", "Agniveer"]))
+    if vid != "dryrun":
+        s["welcome_vid"] = vid
+    return ["welcome", "ssc", vid, info["layout"]]
+
+
+def gate(mode):
+    """Cheap stdlib-only check before installing anything: is there work for this run?"""
+    s = load()
+    if os.environ.get("FORCE") == "1" or mode in ("quiz", "vacancy", "welcome"):
+        return True
+    if mode == "auto":
+        return due_slot(s) is not None
+    if mode == "breaking":
+        if not (7 <= now().hour < 23) or today_count(s, "breaking") >= BREAKING_CAP:
+            return False
+        for th in ORDER:
+            try:
+                for it in scrape(th):
+                    if it["key"] not in s["posted"] and post_count(it["text"], vac_title(it["text"])) >= 1000:
+                        return True
+            except Exception as e:
+                print("gate scrape fail", th, e)
+        return False
+    return True
+
+
+def main():
+    mode = next((a for a in sys.argv[1:] if not a.startswith("--")), "auto")
+    if "--gate" in sys.argv:
+        go = gate(mode)
+        print("go =", go)
+        if os.environ.get("GITHUB_OUTPUT"):
+            open(os.environ["GITHUB_OUTPUT"], "a").write(f"go={'1' if go else '0'}\n")
+        return
+    force = os.environ.get("FORCE") == "1"
+    s = load()
+    slot = None
+    if mode == "auto":
+        due = due_slot(s)
+        if not due and not force:
+            print("no slot due"); return
+        slot, mode = due or (now().strftime("%Y-%m-%d manual"), "quiz")
+    if not force:
+        hr = now().hour
+        if not (7 <= hr < 23):
+            print("quiet hours"); return
+        if mode == "breaking":
+            if today_count(s, "breaking") >= BREAKING_CAP:
+                print("breaking cap"); return
+        elif today_count(s) >= DAILY_CAP:
+            print("daily cap"); return
+    if slot:  # mark first, so a parallel backup run of the same slot skips
+        s["slots"].append(slot)
+    res = None
+    if mode in ("vacancy", "breaking"):
+        res = do_vacancy(s, 1000 if mode == "breaking" else 0)
+        if res is None and mode == "vacancy":
+            res = do_quiz(s)
+    elif mode == "quiz":
+        res = do_quiz(s)
+    elif mode == "welcome":
+        res = do_welcome(s)
+    if res:
+        s["n"] += 1
+        s["log"].append([now().isoformat(timespec="minutes")] + res)
+    if DRY:
+        print("dry run: state not saved"); return
+    save(s)
+
+
+if __name__ == "__main__":
+    main()

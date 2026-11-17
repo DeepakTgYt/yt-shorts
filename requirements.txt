@@ -1,0 +1,9 @@
+Pillow>=10.3
+numpy
+scipy
+soundfile
+fonttools
+edge-tts>=7.0
+aiohttp
+requests
+segno

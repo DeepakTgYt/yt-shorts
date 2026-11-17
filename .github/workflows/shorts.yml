@@ -1,0 +1,69 @@
+name: yt-shorts
+on:
+  schedule:  # backup only: the Cloudflare Worker "yt-cron" dispatches at the exact IST slot
+    - cron: "8 2,5,8,10,12,15 * * *"   # 07:38 10:38 13:38 15:38 17:38 20:38 IST
+    - cron: "38 3,6,13 * * *"          # 09:08 12:08 19:08 IST
+    - cron: "20 2-17/3 * * *"          # breaking (1000+ posts) backup check
+  workflow_dispatch:
+    inputs:
+      mode: {description: "auto | quiz | vacancy | breaking | welcome", required: true, default: auto}
+      force: {description: "1 = ignore slot/time/caps", required: false, default: "0"}
+      retry: {description: "internal: retry count", required: false, default: "0"}
+      dry: {description: "1 = render only, no upload", required: false, default: "0"}
+permissions:
+  contents: write
+  issues: write
+  actions: write
+concurrency: {group: yt-shorts, cancel-in-progress: false}
+jobs:
+  short:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mode
+        id: m
+        run: |
+          if [ -n "${{ github.event.inputs.mode }}" ]; then m="${{ github.event.inputs.mode }}";
+          elif [ "${{ github.event.schedule }}" = "20 2-17/3 * * *" ]; then m=breaking; else m=auto; fi
+          echo "mode=$m" >> $GITHUB_OUTPUT
+      - name: Gate (anything to do?)
+        id: g
+        env: {FORCE: "${{ github.event.inputs.force }}"}
+        run: python3 yt.py ${{ steps.m.outputs.mode }} --gate
+      - uses: actions/setup-python@v5
+        if: steps.g.outputs.go == '1'
+        with: {python-version: "3.12", cache: pip}
+      - name: Install
+        if: steps.g.outputs.go == '1'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg libraqm0 >/dev/null
+          pip install -q -r requirements.txt
+      - name: Make + upload Short
+        if: steps.g.outputs.go == '1'
+        run: python yt.py ${{ steps.m.outputs.mode }} ${{ github.event.inputs.dry == '1' && '--dry' || '' }}
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          FORCE: ${{ github.event.inputs.force }}
+      - name: Keep preview
+        if: steps.g.outputs.go == '1' && always()
+        uses: actions/upload-artifact@v4
+        with: {name: short, path: "out/short*", retention-days: 2, if-no-files-found: ignore}
+      - name: Save state
+        if: steps.g.outputs.go == '1' && always()
+        run: |
+          git config user.name "ytbot"; git config user.email "ytbot@users.noreply.github.com"
+          git add state
+          git diff --cached --quiet || (git commit -m "short ${{ steps.m.outputs.mode }}" && (for i in 1 2 3 4 5; do git pull --rebase -X theirs origin main && git push && break; sleep $((i*5)); done))
+      - name: Retry once, then open an issue
+        if: failure()
+        env: {GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"}
+        run: |
+          r="${{ github.event.inputs.retry }}"; r=${r:-0}
+          if [ "$r" -lt 1 ]; then
+            sleep 90
+            gh workflow run shorts.yml -f mode=${{ steps.m.outputs.mode }} -f force="${{ github.event.inputs.force }}" -f retry=1 -f dry="${{ github.event.inputs.dry }}" || true
+          fi
+          gh issue create --title "Short failed: ${{ steps.m.outputs.mode }} $(TZ=Asia/Kolkata date '+%F %H:%M') IST (retry $r)" --body "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" || true
