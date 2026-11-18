@@ -280,7 +280,32 @@ class Background:
             dp.line([(i, 0), (i + H * 0.5, H)], fill=(255, 255, 255, 9), width=2)
         self.pat = pat
 
+    def set_photo(self, path, tint, dur=24.0, strength=0.62):
+        """Photo backdrop with slow Ken Burns push + pan, tinted with the channel colours and a vignette."""
+        ph = Image.open(path).convert("RGB")
+        s = max(W * 1.18 / ph.size[0], H * 1.18 / ph.size[1])
+        ph = ph.resize((int(ph.size[0] * s), int(ph.size[1] * s)), Image.LANCZOS)
+        a = np.asarray(ph).astype(np.float32)
+        tc = np.array(hexc(tint)[:3], np.float32)
+        a = a * (1 - strength) + tc * strength * 0.55 + a * 0.0
+        h, w = a.shape[:2]
+        yy, xx = np.mgrid[0:h, 0:w]
+        v = 1 - 0.55 * np.clip(((xx - w / 2) / (w / 1.4)) ** 2 + ((yy - h / 2) / (h / 1.5)) ** 2, 0, 1)
+        a *= v[..., None]
+        self.photo = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "RGB")
+        self.pdur = max(dur, 1.0)
+
     def frame(self, t):
+        if getattr(self, "photo", None) is not None:
+            pw, phh = self.photo.size
+            p = min(1.0, t / self.pdur)
+            z = 1.0 + 0.10 * p  # slow push in
+            cw, chh = int(W * 1.12 / z), int(H * 1.12 / z)
+            cw, chh = min(cw, pw), min(chh, phh)
+            x0 = int((pw - cw) * (0.35 + 0.3 * p)); y0 = int((phh - chh) * (0.5 - 0.15 * math.sin(p * 3.1)))
+            im = self.photo.crop((x0, y0, x0 + cw, y0 + chh)).resize((W, H), Image.BILINEAR)
+            im.paste(self.pat, (0, 0), self.pat)
+            return im
         off = int(self.extra / 2 + self.extra / 2 * math.sin(t * 0.22))
         im = self.base.crop((0, off, W, off + H))
         for b, x0, y0, ph, sp in self.blobs:

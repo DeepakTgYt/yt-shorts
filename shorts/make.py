@@ -131,6 +131,7 @@ def handle_pill(ch):
 
 
 def progress(total, acc):
+    return lambda t: None  # user: no duration bar at the top
     track = rrect(CW, 10, 5, hexc("#FFFFFF", 50))
     cache = {}
 
@@ -681,10 +682,27 @@ TEMPLATES = {"quiz": (build_quiz, layout_quiz), "vacancy": (build_vacancy, layou
 
 
 # ---------------------------------------------------------------- thumbnail (custom, 1080x1920 JPEG < 2 MB)
+PHOTO_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "photos")
+
+
+def pick_photo(d, seed=0):
+    """Topic photo for the backdrop: by channel (railway/ssc/bihar/army), rotating through what we have."""
+    if not os.path.isdir(PHOTO_DIR):
+        return None
+    key = d.get("photo_key") or d.get("channel", "ssc")
+    fs = sorted(f for f in os.listdir(PHOTO_DIR) if f.startswith(f"bg_{key}_")) or \
+        sorted(f for f in os.listdir(PHOTO_DIR) if f.startswith("bg_"))
+    return os.path.join(PHOTO_DIR, fs[seed % len(fs)]) if fs else None
+
+
 def thumbnail(d, ch, L, kind, out):
     """Full-canvas cover: shelf/grid shows the whole 9:16, so it can use the full height."""
     acc = ch["accent"]
-    bg = Background(*(L.get("bg") or ch["bg"]), seed=7).frame(0.0).convert("RGBA")
+    _b = Background(*(L.get("bg") or ch["bg"]), seed=7)
+    _ph = pick_photo(d, 0)
+    if _ph:
+        _b.set_photo(_ph, (L.get("bg") or ch["bg"])[0], strength=0.5)
+    bg = _b.frame(0.0).convert("RGBA")
     m, w = 70, W - 140
     y = 200
     eb = badge(d["badge"], acc if kind == "quiz" else RED, fg=INK if kind == "quiz" else "#FFFFFF", size=58)
@@ -738,6 +756,11 @@ def make(kind, d, out, layout=0, preview=False, stills_only=False, music_i=0):
     if kind != "welcome":  # welcome text is already big on screen
         els += captions(tl, skip=("count", "loop", "end"))
     bg = Background(*(L.get("bg") or ch["bg"]), seed=(layout * 31 + music_i) % 997)
+    ph = pick_photo(d, layout + music_i)
+    if ph and not d.get("no_photo"):
+        bg.set_photo(ph, (L.get("bg") or ch["bg"])[1], dur=tl.total)
+    sfx = [(0.0, "impact")] + sfx + [(t_, "swoosh") for t_ in sorted({round(e.t_out, 2) for e in els
+            if getattr(e, "out", "") == "slide_out_left" and e.t_out})][:3]
     base = os.path.splitext(out)[0]
     thumb = thumbnail(d, ch, L, kind, base + "_thumb.jpg")
     if preview or stills_only:

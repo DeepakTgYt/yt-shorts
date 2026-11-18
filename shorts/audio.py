@@ -80,7 +80,29 @@ def sfx_rise(d=0.7):
     return 0.35 * s / (np.abs(s).max() + 1e-9)
 
 
-SFX = {"whoosh": sfx_whoosh, "pop": sfx_pop, "tick": sfx_tick, "ding": sfx_ding, "rise": sfx_rise}
+def sfx_impact(d=0.9):
+    """cinematic hit for the hook: sub drop + noise burst"""
+    n = int(d * SR); t = np.arange(n) / SR
+    f = 95 * np.exp(-t * 5) + 38
+    sub = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 4.2)
+    rng = np.random.default_rng(11)
+    sos = butter(2, 2500, btype="low", fs=SR, output="sos")
+    nz = sosfilt(sos, rng.standard_normal(n)) * np.exp(-t * 18)
+    s = sub + 0.35 * nz / (np.abs(nz).max() + 1e-9)
+    s[:40] *= np.linspace(0, 1, 40)
+    return 0.55 * s / (np.abs(s).max() + 1e-9)
+
+
+def sfx_swoosh(d=0.35):
+    """short airy swipe for cards leaving the screen"""
+    rng = np.random.default_rng(5)
+    n = int(d * SR); t = np.linspace(0, 1, n)
+    sos = butter(2, [1500, 9000], btype="band", fs=SR, output="sos")
+    s = sosfilt(sos, rng.standard_normal(n)) * np.sin(np.pi * t) ** 2
+    return 0.28 * s / (np.abs(s).max() + 1e-9)
+
+
+SFX = {"impact": sfx_impact, "swoosh": sfx_swoosh, "whoosh": sfx_whoosh, "pop": sfx_pop, "tick": sfx_tick, "ding": sfx_ding, "rise": sfx_rise}
 
 
 # ---------------------------------------------------------------- music
