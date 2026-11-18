@@ -41,7 +41,12 @@ jobs:
       - name: Install
         if: steps.g.outputs.go == '1'
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg libraqm0 >/dev/null
+          sudo rm -f /var/lib/man-db/auto-update  # slow man-db trigger on hosted runners
+          for i in 1 2 3; do
+            timeout 300 sh -c 'sudo apt-get update -qq -o Acquire::Retries=3 -o Acquire::http::Timeout=30 && sudo apt-get install -y -qq --no-install-recommends -o Acquire::Retries=3 ffmpeg libraqm0 >/dev/null' && break
+            echo "apt slow/failed, retry $i"; sleep 5
+          done
+          command -v ffmpeg
           pip install -q -r requirements.txt
       - name: VoiceStudio voice (cached)
         if: steps.g.outputs.go == '1'
