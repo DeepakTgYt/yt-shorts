@@ -21,7 +21,7 @@ concurrency: {group: "yt-${{ (github.event.inputs.mode == 'long' || github.event
 jobs:
   short:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 150  # long videos with OmniVoice take ~45 min
     steps:
       - uses: actions/checkout@v4
       - name: Mode
@@ -67,7 +67,7 @@ jobs:
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
           FORCE: ${{ github.event.inputs.force }}
-          TTS_ENGINE: ${{ github.event.inputs.voice || 'edge' }}  # default switches to omnivoice after the night test
+          TTS_ENGINE: ${{ github.event.inputs.voice || 'omnivoice' }}  # VoiceStudio/OmniVoice since 18 Nov night test; voice=edge to override; auto-falls back to Edge on error
           OMNIVOICE_STEPS: ${{ github.event.inputs.steps || '16' }}
           OMNIVOICE_PY: /home/runner/vs/venv/bin/python
           OMNIVOICE_MODEL: /home/runner/vs/model
