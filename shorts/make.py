@@ -789,7 +789,7 @@ def make(kind, d, out, layout=0, preview=False, stills_only=False, music_i=0):
                       bpm=[92, 100, 108][music_i % 3])
             audio.loudnorm(raw, norm)
             n = render_video(bg, els, tl.total, norm, out, cam=cam, flash=flash)
-    info = {"out": out, "thumb": thumb, "duration_s": round(tl.total, 2), "frames": n, "layout": L["name"],
+    info = {"out": out, "thumb": thumb, "duration_s": round(tl.total, 2), "t_end": round(tl["end"]["t"], 2), "frames": n, "layout": L["name"],
             "voice": bool(any(b.get("wav") for b in tl.beats)), "secs": round(time.time() - T0, 1)}
     print(json.dumps(info, ensure_ascii=False))
     return info

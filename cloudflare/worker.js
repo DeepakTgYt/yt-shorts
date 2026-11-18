@@ -59,6 +59,10 @@ async function breakingCheck(env) {
         if (!/NEW VACANCY|नई भर्ती/.test(t)) continue;
         const n = posts(t);
         const key = blk.match(/tgme_widget_message_date" href="([^"]+)"/)?.[1] || t.slice(0, 50);
+        if (n >= 500 && !(await env.KV.get("long:" + key))) {  // big bharti: full-details long video right away
+          await env.KV.put("long:" + key, "1", { expirationTtl: 7 * 86400 });
+          await dispatch(env, "long", `${n} posts ${key}`);
+        }
         if (n >= 1000 && !(await env.KV.get("seen:" + key))) {
           await env.KV.put("seen:" + key, "1", { expirationTtl: 7 * 86400 });
           await dispatch(env, "breaking", `${n} posts ${key}`);

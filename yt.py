@@ -28,6 +28,10 @@ ORDER = ["ssc", "railway", "bihar", "army"]
 # IST slot -> mode. 9 Shorts a day + breaking. vacancy falls back to quiz when nothing new.
 SLOTS = [("07:30", "quiz"), ("09:00", "quiz"), ("10:30", "vacancy"), ("12:00", "quiz"), ("13:30", "quiz"),
          ("15:30", "vacancy"), ("17:30", "quiz"), ("19:00", "quiz"), ("20:30", "vacancy")]
+# Long job-detail videos are NOT on a clock: made and uploaded as soon as a big recruitment appears.
+LONG_MIN = 500      # "bada bharti": at least this many posts
+LONG_CAP = 4        # safety cap per day (Actions minutes)
+LONG_STATE = os.path.join(HERE, "state", "long.json")
 DAILY_CAP, BREAKING_CAP = 10, 3
 TAGS = {"ssc": ["SSC", "SSC GD", "SSC CGL", "SSC MTS", "SSC CHSL", "ssc gk", "ssc pyq", "ssc gd gk", "एसएससी"],
         "railway": ["Railway", "RRB NTPC", "RRB Group D", "RRB ALP", "railway gk", "railway bharti", "rrb gk", "रेलवे"],
@@ -60,7 +64,7 @@ def tags_for(theme, extra=()):
 def hashtag_line(theme, kind):
     """3 most relevant first (YouTube shows them above the title), max 7 total."""
     first = {"quiz": "#GKQuiz", "vacancy": "#SarkariNaukri", "breaking": "#SarkariNaukri"}.get(kind, "#SarkariNaukri")
-    tags = ["#Shorts", HASHTAGS.get(theme, ["#SarkariNaukri"])[0], first] + HASHTAGS.get(theme, [])[1:] + \
+    tags = ([] if kind == "long" else ["#Shorts"]) + [HASHTAGS.get(theme, ["#SarkariNaukri"])[0], first] + HASHTAGS.get(theme, [])[1:] + \
         ["#GovtJobs", "#GKinHindi"]
     out = []
     for t in tags:
@@ -107,7 +111,8 @@ def save(s):
 
 def today_count(s, mode=None):
     d = now().strftime("%Y-%m-%d")
-    return len([e for e in s["log"] if e[0].startswith(d) and (mode is None or e[1] == mode) and e[3] != "dryrun"])
+    return len([e for e in s["log"] if e[0].startswith(d) and (e[1] == mode if mode else e[1] != "long")
+                and e[3] != "dryrun"])
 
 
 def due_slot(s, window_min=100):
@@ -459,6 +464,99 @@ def do_vacancy(s, min_posts=0):
     return None
 
 
+def load_long():
+    try:
+        L = json.load(open(LONG_STATE))
+    except Exception:
+        L = {}
+    L.setdefault("posted", []); L.setdefault("log", [])
+    return L
+
+
+def save_long(L):
+    L["posted"] = L["posted"][-300:]; L["log"] = L["log"][-200:]
+    os.makedirs(os.path.dirname(LONG_STATE), exist_ok=True)
+    json.dump(L, open(LONG_STATE, "w"), ensure_ascii=False, indent=1)
+
+
+def long_today(L):
+    d = now().strftime("%Y-%m-%d")
+    return len([e for e in L["log"] if e[0].startswith(d) and e[3] != "dryrun"])
+
+
+def pick_long(L, parse=True):
+    """Fresh (72 h) big recruitments not yet made into a long video, biggest first."""
+    if parse:
+        import explainer
+    cands = []
+    for theme in ORDER:
+        try:
+            items = scrape(theme)
+        except Exception as e:
+            print("scrape fail", theme, e); continue
+        cut = (datetime.now(timezone.utc) - timedelta(hours=72)).isoformat()[:19]
+        for it in items:
+            if it["key"] in L["posted"] or (it["date"] and it["date"] < cut):
+                continue
+            title = vac_title(it["text"]); n = post_count(it["text"], title)
+            if n < LONG_MIN:
+                continue
+            if not parse:
+                return [(n, 0, it, None, title)]
+            d = explainer.parse_post(it["text"], short_title(title), n)
+            richness = len(d["fees"]) + len(d["dates"]) + len(d["age"]) + bool(d["qual"]) + bool(d["salary"])
+            if richness < 4:  # not enough real detail for a full video
+                continue
+            d["channel"] = theme
+            cands.append((n, richness, it, d, title))
+    cands.sort(key=lambda c: (c[0], c[1]), reverse=True)
+    return cands
+
+
+def do_long(s):
+    """One long 16:9 video with the full details of one fresh big recruitment, uploaded right away."""
+    import explainer
+    L = load_long()
+    if long_today(L) >= LONG_CAP and os.environ.get("FORCE") != "1":
+        print("long cap"); return None
+    cands = pick_long(L)
+    if not cands:
+        print("no big job with enough detail for a long video"); return None
+    n, _, it, d, full = cands[0]
+    os.makedirs(OUT, exist_ok=True)
+    out = os.path.join(OUT, "long.mp4")
+    info = explainer.build(d, out, os.path.join(OUT, "long_thumb.jpg"), voice="male", music_i=s["n"])
+    st = d["title"]
+    last = next((b for a, b in d["dates"] if "आवेदन की अंतिम" in a), "")
+    ttl = f"{st} | {num_hi(n)} पद | योग्यता, आयु, फीस, अंतिम तिथि – पूरी जानकारी" if n else f"{st} – पूरी जानकारी"
+    if len(ttl) > 100:
+        ttl = f"{st[:50]} | {num_hi(n)} पद – पूरी जानकारी"
+    theme = d["channel"]
+    lines = [f"{full} – पूरी जानकारी हिंदी में", ""]
+    if n:
+        lines.append(f"✅ कुल पद: {num_hi(n)}")
+    if d["salary"]:
+        lines.append(f"✅ वेतन: {d['salary']}")
+    if d["qual"]:
+        lines.append(f"✅ योग्यता: {d['qual']}")
+    for a in d["age"]:
+        lines.append(f"✅ {a}")
+    if d["fees"]:
+        lines += ["", "💳 आवेदन शुल्क:"] + [f"• {a}: {b}" for a, b in d["fees"]]
+    if d["dates"]:
+        lines += ["", "📅 महत्वपूर्ण तिथियाँ:"] + [f"• {a}: {b}" for a, b in d["dates"]]
+    lines += ["", "आवेदन से पहले ऑफिशियल नोटिफिकेशन ज़रूर पढ़ें।", f"पूरी डिटेल, PDF और आवेदन लिंक: https://t.me/{CH[theme]}"]
+    desc = description(theme, lines, channel_url(s), kind="long")
+    tags = tags_for(theme, [st, f"{st} full details", "भर्ती पूरी जानकारी", "new vacancy 2026", "sarkari naukri 2026"])
+    tags = [t for t in tags if t.lower() != "shorts"]
+    vid = upload(info["out"], info["thumb"], ttl, desc, tags)
+    L["posted"].append(it["key"])
+    L["log"].append([now().strftime("%Y-%m-%d %H:%M"), "long", theme, vid, it["key"], n])
+    if not DRY:
+        save_long(L)
+    return ["long", theme, vid, f"{info['duration_s']}s"]
+
+
 def do_welcome(s):
     if s.get("welcome_vid"):
         print("welcome already posted"); return None
@@ -481,6 +579,9 @@ def gate(mode):
     s = load()
     if os.environ.get("FORCE") == "1" or mode in ("quiz", "vacancy", "welcome"):
         return True
+    if mode == "long":
+        L = load_long()
+        return long_today(L) < LONG_CAP and bool(pick_long(L, parse=False))
     if mode == "auto":
         return due_slot(s) is not None
     if mode == "breaking":
@@ -520,7 +621,7 @@ def main():
         if mode == "breaking":
             if today_count(s, "breaking") >= BREAKING_CAP:
                 print("breaking cap"); return
-        elif today_count(s) >= DAILY_CAP:
+        elif mode != "long" and today_count(s) >= DAILY_CAP:
             print("daily cap"); return
     if slot:  # mark first, so a parallel backup run of the same slot skips
         s["slots"].append(slot)
@@ -533,6 +634,8 @@ def main():
         res = do_quiz(s)
     elif mode == "welcome":
         res = do_welcome(s)
+    elif mode == "long":  # own state file (state/long.json), own concurrency group: never touches state.json
+        print(do_long(s)); return
     if res:
         s["n"] += 1
         s["log"].append([now().isoformat(timespec="minutes")] + res)
