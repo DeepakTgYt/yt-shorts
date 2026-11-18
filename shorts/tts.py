@@ -115,7 +115,8 @@ def _omnivoice(lines, voice, outs):
         raise RuntimeError("OmniVoice venv/model not found (set OMNIVOICE_PY / OMNIVOICE_MODEL)")
     instruct = OMNI_INSTRUCT if voice == "female" else OMNI_INSTRUCT.replace("female", "male")
     with tempfile.TemporaryDirectory() as td:
-        jobs = [{"text": t, "out": os.path.join(td, f"{i}.wav")} for i, t in enumerate(lines)]
+        from hindi_num import speak_numbers  # OmniVoice garbles digits ("1993", "182वाँ")
+        jobs = [{"text": speak_numbers(t), "out": os.path.join(td, f"{i}.wav")} for i, t in enumerate(lines)]
         jp = os.path.join(td, "jobs.json")
         json.dump(jobs, open(jp, "w"), ensure_ascii=False)
         subprocess.run([OMNI_PY, os.path.join(HERE, "omnivoice_runner.py"), OMNI_MODEL, jp,
