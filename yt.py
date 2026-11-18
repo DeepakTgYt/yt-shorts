@@ -33,6 +33,19 @@ LONG_MIN = 500      # "bada bharti": at least this many posts
 LONG_CAP = 4        # safety cap per day (Actions minutes)
 LONG_STATE = os.path.join(HERE, "state", "long.json")
 DAILY_CAP, BREAKING_CAP = 10, 3
+LIMIT_COOLDOWN_H = 1  # YouTube "uploadLimitExceeded": pause uploads this long instead of retry + issue spam
+
+
+class UploadLimit(Exception):
+    pass
+
+
+def upload_blocked(s):
+    b = s.get("upload_block_until")
+    try:
+        return bool(b) and datetime.fromisoformat(b) > now()
+    except Exception:
+        return False
 TAGS = {"ssc": ["SSC", "SSC GD", "SSC CGL", "SSC MTS", "SSC CHSL", "ssc gk", "ssc pyq", "ssc gd gk", "एसएससी"],
         "railway": ["Railway", "RRB NTPC", "RRB Group D", "RRB ALP", "railway gk", "railway bharti", "rrb gk", "रेलवे"],
         "bihar": ["Bihar", "Bihar Police", "BPSC", "BSSC", "bihar gk", "bihar police gk", "bihar sarkari naukri", "बिहार"],
@@ -111,7 +124,7 @@ def save(s):
 
 def today_count(s, mode=None):
     d = now().strftime("%Y-%m-%d")
-    return len([e for e in s["log"] if e[0].startswith(d) and (e[1] == mode if mode else e[1] != "long")
+    return len([e for e in s["log"] if e[0].startswith(d) and (e[1] == mode if mode else e[1] not in ("long", "limit"))
                 and e[3] != "dryrun"])
 
 
@@ -333,6 +346,8 @@ def upload(mp4, thumb, title, desc, tags):
             break
         except urllib.error.HTTPError as e:
             body = e.read().decode()[:500]; print("upload err", e.code, body)
+            if "uploadLimitExceeded" in body:
+                raise UploadLimit(body)
             if e.code < 500 and e.code != 429:
                 raise
         except Exception as e:
@@ -577,7 +592,11 @@ def do_welcome(s):
 def gate(mode):
     """Cheap stdlib-only check before installing anything: is there work for this run?"""
     s = load()
-    if os.environ.get("FORCE") == "1" or mode in ("quiz", "vacancy", "welcome"):
+    if os.environ.get("FORCE") == "1":
+        return True
+    if upload_blocked(s):
+        print("uploads paused until", s.get("upload_block_until")); return False
+    if mode in ("quiz", "vacancy", "welcome"):
         return True
     if mode == "long":
         L = load_long()
@@ -626,16 +645,26 @@ def main():
     if slot:  # mark first, so a parallel backup run of the same slot skips
         s["slots"].append(slot)
     res = None
-    if mode in ("vacancy", "breaking"):
-        res = do_vacancy(s, 1000 if mode == "breaking" else 0)
-        if res is None and mode == "vacancy":
+    try:
+        if mode in ("vacancy", "breaking"):
+            res = do_vacancy(s, 1000 if mode == "breaking" else 0)
+            if res is None and mode == "vacancy":
+                res = do_quiz(s)
+        elif mode == "quiz":
             res = do_quiz(s)
-    elif mode == "quiz":
-        res = do_quiz(s)
-    elif mode == "welcome":
-        res = do_welcome(s)
-    elif mode == "long":  # own state file (state/long.json), own concurrency group: never touches state.json
-        print(do_long(s)); return
+        elif mode == "welcome":
+            res = do_welcome(s)
+        elif mode == "long":  # own state file (state/long.json), own concurrency group: never touches state.json
+            print(do_long(s)); return
+    except UploadLimit:
+        print("YouTube upload limit reached: pausing uploads for", LIMIT_COOLDOWN_H, "h")
+        if mode == "long":
+            return
+        s["upload_block_until"] = (now() + timedelta(hours=LIMIT_COOLDOWN_H)).isoformat(timespec="minutes")
+        s["log"].append([now().isoformat(timespec="minutes"), "limit", mode, "", ""])
+        if not DRY:
+            save(s)
+        return
     if res:
         s["n"] += 1
         s["log"].append([now().isoformat(timespec="minutes")] + res)
