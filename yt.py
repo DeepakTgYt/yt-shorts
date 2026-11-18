@@ -160,6 +160,16 @@ def scrape(theme):
     return items
 
 
+def fetch_post(key):
+    """One Telegram post by its link (embed page), same shape as scrape() items. Used by dry tests."""
+    h = urllib.request.urlopen(urllib.request.Request(key + "?embed=1", headers={"User-Agent": "Mozilla/5.0"}),
+                               timeout=30).read().decode()
+    m = re.search(r'js-message_text" dir="auto">(.*?)</div>', h, re.S)
+    dt = re.search(r'<time datetime="([^"]+)"', h)
+    t = html.unescape(re.sub(r"<br\s*/?>", "\n", m.group(1))) if m else ""
+    return {"text": re.sub(r"<[^>]+>", "", t), "key": key, "date": dt.group(1) if dt else ""}
+
+
 def field(t, *labels):
     for lab in labels:
         m = re.search(lab + r"[^:\n]*:\s*([^\n]+)", t)
@@ -538,6 +548,13 @@ def do_long(s):
     cands = pick_long(L)
     if not cands and DRY and os.environ.get("FORCE") == "1":
         print("dry test: no fresh big job, using an older one"); cands = pick_long(L, relax=True)
+        for key in ([] if cands else L["posted"][::-1][:3]):  # feed pages are short: re-fetch past long posts
+            import explainer
+            it = fetch_post(key); title = vac_title(it["text"]); n = post_count(it["text"], title)
+            if n:
+                d = explainer.parse_post(it["text"], short_title(title), n)
+                d["channel"] = next((th for th in ORDER if CH[th] in key), "ssc")
+                cands = [(n, 0, it, d, title)]; print("dry test: re-using", key); break
     if not cands:
         print("no big job with enough detail for a long video"); return None
     n, _, it, d, full = cands[0]
