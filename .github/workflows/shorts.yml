@@ -11,6 +11,8 @@ on:
       force: {description: "1 = ignore slot/time/caps", required: false, default: "0"}
       retry: {description: "internal: retry count", required: false, default: "0"}
       dry: {description: "1 = render only, no upload", required: false, default: "0"}
+      voice: {description: "test override: edge | omnivoice (blank = workflow default)", required: false, default: ""}
+      steps: {description: "test override: OmniVoice steps (blank = 16)", required: false, default: ""}
 permissions:
   contents: write
   issues: write
@@ -60,7 +62,8 @@ jobs:
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
           FORCE: ${{ github.event.inputs.force }}
-          TTS_ENGINE: edge  # switch to omnivoice after the night test
+          TTS_ENGINE: ${{ github.event.inputs.voice || 'edge' }}  # default switches to omnivoice after the night test
+          OMNIVOICE_STEPS: ${{ github.event.inputs.steps || '16' }}
           OMNIVOICE_PY: /home/runner/vs/venv/bin/python
           OMNIVOICE_MODEL: /home/runner/vs/model
           OMNIVOICE_INSTRUCT: "male, young adult"
@@ -81,6 +84,6 @@ jobs:
           r="${{ github.event.inputs.retry }}"; r=${r:-0}
           if [ "$r" -lt 1 ]; then
             sleep 90
-            gh workflow run shorts.yml -f mode=${{ steps.m.outputs.mode }} -f force="${{ github.event.inputs.force }}" -f retry=1 -f dry="${{ github.event.inputs.dry }}" || true
+            gh workflow run shorts.yml -f mode=${{ steps.m.outputs.mode }} -f force="${{ github.event.inputs.force }}" -f retry=1 -f dry="${{ github.event.inputs.dry }}" -f voice="${{ github.event.inputs.voice }}" -f steps="${{ github.event.inputs.steps }}" || true
           fi
           gh issue create --title "Short failed: ${{ steps.m.outputs.mode }} $(TZ=Asia/Kolkata date '+%F %H:%M') IST (retry $r)" --body "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" || true
