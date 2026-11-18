@@ -60,7 +60,7 @@ jobs:
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
           FORCE: ${{ github.event.inputs.force }}
-          TTS_ENGINE: omnivoice
+          TTS_ENGINE: edge  # switch to omnivoice after the night test
           OMNIVOICE_PY: /home/runner/vs/venv/bin/python
           OMNIVOICE_MODEL: /home/runner/vs/model
           OMNIVOICE_INSTRUCT: "male, young adult"
