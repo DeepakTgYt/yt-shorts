@@ -6,7 +6,8 @@
  ],
  "used_q": [
   82,
-  392
+  392,
+  305
  ],
  "fps": [
   {
@@ -75,13 +76,21 @@
    "ssc",
    "RD0BQzzFcZM",
    "ocean"
+  ],
+  [
+   "2026-11-18T09:02+05:30",
+   "quiz",
+   "ssc",
+   "Q9DmB9uJIAE",
+   "classic"
   ]
  ],
  "slots": [
   "2026-11-17 20:30",
-  "2026-11-18 07:30"
+  "2026-11-18 07:30",
+  "2026-11-18 09:00"
  ],
- "n": 5,
+ "n": 6,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg"
 }
