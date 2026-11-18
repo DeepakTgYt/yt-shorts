@@ -3,7 +3,8 @@
   "https://t.me/Railway_Job_Notification_Quiz/157",
   "https://t.me/Bihar_Job_Notification_Quiz/150",
   "https://t.me/Railway_Job_Notification_Quiz/156",
-  "https://t.me/Bihar_Job_Notification_Quiz/137"
+  "https://t.me/Bihar_Job_Notification_Quiz/137",
+  "https://t.me/SSC_Job_Alert/164"
  ],
  "used_q": [
   82,
@@ -56,6 +57,17 @@
     "parishad",
     "pdf",
     "shorthand"
+   ],
+   "t": "2026-11-18"
+  },
+  {
+   "n": 320,
+   "w": [
+    "320",
+    "grade",
+    "ldce",
+    "ssc",
+    "stenographer"
    ],
    "t": "2026-11-18"
   }
@@ -137,6 +149,13 @@
    "quiz",
    "",
    ""
+  ],
+  [
+   "2026-11-18T20:33+05:30",
+   "vacancy",
+   "ssc",
+   "yD4fUP0XJyY",
+   "ocean"
   ]
  ],
  "slots": [
@@ -147,9 +166,10 @@
   "2026-11-18 12:00",
   "2026-11-18 13:30",
   "2026-11-18 17:30",
-  "2026-11-18 19:00"
+  "2026-11-18 19:00",
+  "2026-11-18 20:30"
  ],
- "n": 9,
+ "n": 10,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg",
  "upload_block_until": "2026-11-18T20:02+05:30"
