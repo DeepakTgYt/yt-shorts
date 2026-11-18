@@ -153,11 +153,24 @@ def field(t, *labels):
 def vac_title(t):
     m = re.search(r"📌\s*([^\n]+)", t)
     title = m.group(1).strip() if m else t.split("\n")[0]
-    return title[:160]
+    return clean_title(title)[:160]
+
+
+_EMO = re.compile(r"[\U0001F000-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF\uFE0F\u200D\u25A0-\u25FF]")
+
+
+def clean_title(x):
+    """Keep only the title itself: cut at the next emoji/field marker, drop symbols and half words."""
+    m = _EMO.search(x)
+    if m and m.start() > 15:
+        x = x[:m.start()]
+    x = _EMO.sub("", x)
+    x = re.split(r"\s+(?:सूचना तिथि|अंतिम तिथि|Notification Date|Last Date)\b", x)[0]
+    return re.sub(r"\s{2,}", " ", x).strip(" -–|/")
 
 
 def short_title(title):
-    x = re.sub(r"\s*[–-]\s*(Apply|Online|Download).*$", "", title, flags=re.I)
+    x = re.sub(r"\s*[–-]?\s*\b(Apply Online|Online Form|Download)\b.*$", "", clean_title(title), flags=re.I)
     x = re.sub(r"\b(Notification Out|Reopened)\b", "", x, flags=re.I)
     return re.sub(r"\s{2,}", " ", x).strip(" -–")[:90]
 

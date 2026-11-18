@@ -146,32 +146,44 @@ def progress(total, acc):
     return f
 
 
-def captions(tl, skip=(), y=1300):
-    """Spoken words as bold subtitles, chunk by chunk (kinetic captions)."""
+CAP_Y = 1492  # bottom-most safe line (below the handle pill, above YouTube's title/channel overlay)
+
+
+def captions(tl, skip=(), y=CAP_Y, hi="#FFD60A"):
+    """Spoken words as bold bottom subtitles, karaoke style: the word being spoken lights up and pops."""
     els = []
     for b in tl.beats:
         if not b.get("cap") or "speech" not in b or b["name"] in skip:
             continue
-        words, chunks, cur = b["cap"].split(), [], ""
+        words, chunks, cur = b["cap"].split(), [], []
         for w in words:
-            t = (cur + " " + w).strip()
-            if cur and measure(t, "bold", 46) > 640:
-                chunks.append(cur); cur = w
+            if cur and measure(" ".join(cur + [w]), "bold", 46) > 640:
+                chunks.append(cur); cur = [w]
             else:
-                cur = t
+                cur.append(w)
         if cur:
             chunks.append(cur)
         s0, s1 = b["speech"]
-        tot = sum(len(c) for c in chunks) or 1
+        tot = sum(len(w) + 1 for c in chunks for w in c) or 1
         t = s0
         for c in chunks:
-            d = (s1 - s0) * len(c) / tot
-            txt = text_img(c, "bold", 46, "#FFFFFF", CW - 40, align="center", stroke=3, stroke_fill=(0, 0, 0, 170))
-            box = rrect(txt.size[0] + 44, txt.size[1] + 20, 24, hexc("#0A0C1A", 175))
-            box.alpha_composite(txt, (22, 10))
-            box.info["pad"] = 0
-            els.append(El(box, (X0 + X1) // 2, y, t - 0.04, t + d - 0.04, anim="pop", dur=0.14, out="fade",
-                          out_dur=0.05, anchor_center=True))
+            d = (s1 - s0) * sum(len(w) + 1 for w in c) / tot
+            imgs_w = [text_img(w, "bold", 46, "#FFFFFF", CW, stroke=3, stroke_fill=(0, 0, 0, 170)) for w in c]
+            imgs_h = [text_img(w, "bold", 46, hi, CW, stroke=3, stroke_fill=(0, 0, 0, 170)) for w in c]
+
+            def frame_for(k, iw=imgs_w, ih=imgs_h):
+                row = hstack([ih[j] if j == k else iw[j] for j in range(len(iw))], gap=11)
+                box = rrect(row.size[0] + 44, row.size[1] + 20, 24, hexc("#0A0C1A", 185))
+                box.alpha_composite(row, (22, 10))
+                box.info["pad"] = 0
+                return box
+            frames = [frame_for(k) for k in range(len(c))]
+            wt, acc_t = [], t
+            for w in c:
+                wt.append(acc_t); acc_t += d * (len(w) + 1) / sum(len(x) + 1 for x in c)
+            el = El(frames[0], (X0 + X1) // 2, y, t - 0.04, t + d - 0.04, anim="pop", dur=0.14, out="fade",
+                    out_dur=0.05, anchor_center=True, variants=list(zip(wt[1:], frames[1:])))
+            els.append(el)
             t += d
     return els
 
@@ -256,6 +268,30 @@ def end_panel(qw=470, head=True):
     out.info["pad"] = 0
     out.info["qbox"] = ((w - q.size[0]) // 2, y + g, q.size[0], q.size[1])
     return out
+
+
+def shine_fx(card_im, period=1.8, width=110):
+    """A diagonal light sweep across a card (motion-graphics highlight), clipped to the card shape."""
+    import numpy as np
+    w, h = card_im.size
+    base = np.array(card_im).astype(np.float32)
+    mask = base[..., 3] / 255.0
+    yy, xx = np.mgrid[0:h, 0:w]
+    diag = xx + 0.35 * yy
+    cache = {}
+
+    def f(t):
+        k = int(((t % period) / period) * 36)
+        if k not in cache:
+            c = -width + (w + 0.35 * h + 2 * width) * min(k, 24) / 24
+            g = np.clip(1 - np.abs(diag - c) / (width / 2), 0, 1) * 0.45 * mask if k <= 24 else 0 * mask
+            out = base.copy()
+            out[..., :3] = out[..., :3] + (255 - out[..., :3]) * g[..., None]
+            im = Image.fromarray(out.clip(0, 255).astype(np.uint8), "RGBA")
+            im.info["pad"] = card_im.info.get("pad", 0)
+            cache[k] = im
+        return cache[k]
+    return f
 
 
 def scan_fx(panel, period=1.6):
@@ -499,14 +535,14 @@ def layout_vacancy(d, ch, tl, L):
     t_end, t_loop = tl["end"]["t"], tl["loop"]["t"]
     els, sfx = [], []
     els.append(El(None, X0, 262, 0.0, anim="none", dur=0.01, dyn=progress(tl.total, acc)))
+    keep = t_end - 0.1  # clear the stage before the end panel (no overlap with the QR)
     eb = badge(d["badge"], RED, fg="#FFFFFF", size=40)
-    els.append(El(eb, X0, 290, 0.0, t_loop + 1.0, anim="pop", dur=0.3, still0=True, pulse=0.03, shake=[(0.3, 0.25, 8)]))
-    keep = t_loop + 1.0
+    els.append(El(eb, X0, 290, 0.0, keep, anim="pop", dur=0.3, still0=True, pulse=0.03, shake=[(0.3, 0.25, 8)]))
     hp = handle_pill(ch)
     els.append(El(hp, X0, 1372, 0.0, t_end - 0.1, anim="none", dur=0.01))
     y = 290 + eb.size[1] + 18
     hk = text_img(d["hook"], "black", 60, acc, CW, stroke=2, stroke_fill=(0, 0, 0, 140))
-    els.append(El(hk, X0, y, 0.0, keep, anim="pop", dur=0.3, still0=True))
+    els.append(El(hk, X0, y, 0.0, keep, anim="pop", dur=0.3, still0=True, out="shrink"))
     y += hk.size[1] + 16
     pt = text_img(d["post"], "black", 48 if len(d["post"]) < 70 else 40, ink, CW - 70)
     items = []
@@ -514,7 +550,7 @@ def layout_vacancy(d, ch, tl, L):
         items.append((text_img(d["org"], "bold", 30, sub_c(ink), CW - 70), "left"))
     items.append((pt, "left"))
     pc = card(items, CW, bg=cbg, pad=(35, 26), gap=10)
-    els.append(El(pc, X0, y, 0.0, keep, anim="pop", dur=0.3, still0=True))
+    els.append(El(pc, X0, y, 0.0, keep, anim="pop", dur=0.3, still0=True, out="slide_out_left"))
     y += pc.size[1] - 2 * pc.info["pad"] + 20
     post_bottom = y
     if d.get("vacancies"):
@@ -535,7 +571,8 @@ def layout_vacancy(d, ch, tl, L):
                 b.info["pad"] = 0
                 cache[val] = b
             return cache[val]
-        els.append(El(None, X0, y, tl["vac"]["t"], t_end - 0.1, anim="zoom", dur=0.35, dyn=stat))
+        els.append(El(None, X0, y, tl["vac"]["t"], tl["tip"]["t"] - 0.05, anim="zoom", dur=0.35, dyn=stat,
+                      out="slide_out_left", out_dur=0.35))
         sfx.append((tl["vac"]["t"], "whoosh"))
         y += 150 + 18
     ic_for = {"अंतिम तिथि": "calendar", "आखिरी तारीख": "calendar", "आयु सीमा": "clock", "योग्यता": "cap"}
@@ -550,7 +587,8 @@ def layout_vacancy(d, ch, tl, L):
         if y + rc.size[1] - 2 * rc.info["pad"] > Y1 - 90:
             break
         t_f = tl[f"f{i}"]["t"]
-        els.append(El(rc, X0, y, t_f, t_end - 0.1, anim="slide_left", dur=0.35, pulse=0.02 if hot else 0))
+        els.append(El(rc, X0, y, t_f, tl["tip"]["t"] + 0.07 * (i + 1), anim="swing", dur=0.45,
+                      pulse=0.02 if hot else 0, out="slide_out_left", out_dur=0.35))
         sfx.append((t_f, "ding" if hot else "pop"))
         y += rc.size[1] - 2 * rc.info["pad"] + 14
     # value-add tip replaces everything briefly as a highlighted card
@@ -558,7 +596,8 @@ def layout_vacancy(d, ch, tl, L):
     bulb = icon("bulb", 60, INK, bg="#FFFFFF")
     tc = card([(hstack([bulb, tip], gap=18), "left")], CW, bg=acc, pad=(28, 22))
     t_t = tl["tip"]["t"]
-    els.append(El(tc, X0, max(640, Y1 - 120 - (tc.size[1] - 2 * tc.info["pad"])), t_t, t_end - 0.1, anim="zoom", dur=0.35))
+    els.append(El(tc, X0, post_bottom, t_t + 0.25, t_end - 0.1, anim="rise", dur=0.45, pulse=0.015,
+                  dyn=shine_fx(tc)))
     sfx.append((t_t, "whoosh"))
     qbig = end_panel()  # end: headline + the user's QR, scan-line motion
     els.append(El(qbig, (X0 + X1) // 2, (262 + Y1) // 2, t_end, t_loop, anim="pop", dur=0.4, pulse=0.015,

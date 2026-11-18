@@ -1,5 +1,6 @@
 """Frame renderer: sprites + keyframed 2D motion, piped to ffmpeg as raw RGB."""
 import math
+import re
 import os
 import subprocess
 
@@ -106,7 +107,11 @@ def wrap(text, weight, size, max_w):
     return lines
 
 
+_NOGLYPH = re.compile(r"[\U0001F000-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF\uFE0F\u200D]")
+
+
 def text_img(text, weight, size, color, max_w, align="left", spacing=1.08, stroke=0, stroke_fill=None):
+    text = _NOGLYPH.sub("", text).replace("  ", " ").strip()  # emoji have no glyph in our fonts (tofu boxes)
     """RGBA image of wrapped text. Uses font ascent/descent so Devanagari matras never clip."""
     f = font(weight, size)
     asc, desc = f.getmetrics()
@@ -339,6 +344,10 @@ class El:
                     scale = 0.55 + 0.45 * ease_out_back(p); alpha = min(1, p * 3)
             elif self.anim == "zoom":
                 scale = 1.6 - 0.6 * ease_out_cubic(p); alpha = min(1, p * 2.5)
+            elif self.anim == "swing":  # slide in from the right with an overshoot settle
+                x += int((1 - ease_out_back(p)) * (W * 0.9)); alpha = min(1, p * 2.5)
+            elif self.anim == "rise":  # rise from below with a scale overshoot
+                y += int((1 - e) * 220); scale = 0.8 + 0.2 * ease_out_back(p); alpha = min(1, p * 2.5)
             elif self.anim == "none":
                 pass
             elif self.anim == "fade":
