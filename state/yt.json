@@ -2,7 +2,8 @@
  "posted": [
   "https://t.me/Railway_Job_Notification_Quiz/157",
   "https://t.me/Bihar_Job_Notification_Quiz/150",
-  "https://t.me/Railway_Job_Notification_Quiz/156"
+  "https://t.me/Railway_Job_Notification_Quiz/156",
+  "https://t.me/Bihar_Job_Notification_Quiz/137"
  ],
  "used_q": [
   82,
@@ -39,6 +40,22 @@
     "stenographer"
    ],
    "t": "2026-11-17"
+  },
+  {
+   "n": 0,
+   "w": [
+    "bihar",
+    "date",
+    "deo",
+    "download",
+    "ldc",
+    "notice",
+    "out",
+    "parishad",
+    "pdf",
+    "shorthand"
+   ],
+   "t": "2026-11-18"
   }
  ],
  "log": [
@@ -83,14 +100,22 @@
    "ssc",
    "Q9DmB9uJIAE",
    "classic"
+  ],
+  [
+   "2026-11-18T10:32+05:30",
+   "vacancy",
+   "bihar",
+   "_Re911OWhkA",
+   "neon"
   ]
  ],
  "slots": [
   "2026-11-17 20:30",
   "2026-11-18 07:30",
-  "2026-11-18 09:00"
+  "2026-11-18 09:00",
+  "2026-11-18 10:30"
  ],
- "n": 6,
+ "n": 7,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg"
 }
