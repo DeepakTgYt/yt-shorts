@@ -1,0 +1,33 @@
+name: voice-ref
+on:
+  workflow_dispatch:
+    inputs:
+      text: {description: "reference sentence", required: false, default: "नमस्ते दोस्तों, आज हम आपके लिए एक नई सरकारी भर्ती की पूरी जानकारी लेकर आए हैं। ध्यान से सुनिए, और आखिर तक ज़रूर देखिए।"}
+      seeds: {description: "space separated seeds", required: false, default: "1 2 3 4"}
+jobs:
+  ref:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: ~/vs
+          key: omnivoice-v1-${{ hashFiles('shorts/setup_omnivoice.sh') }}
+      - name: Make candidates
+        env: {TEXT: "${{ github.event.inputs.text }}", SEEDS: "${{ github.event.inputs.seeds }}"}
+        run: |
+          mkdir -p out/ref
+          $HOME/vs/venv/bin/python - <<'PY'
+          import os, time, torch, soundfile as sf
+          from omnivoice.models.omnivoice import OmniVoice
+          m = OmniVoice.from_pretrained(os.path.expanduser("~/vs/model"), device_map="cpu", dtype=torch.float32)
+          for s in os.environ["SEEDS"].split():
+              torch.manual_seed(int(s)); t = time.time()
+              a = m.generate(text=os.environ["TEXT"], language="hi", instruct="male, young adult", num_step=32)[0]
+              a = a.detach().cpu().numpy() if hasattr(a, "detach") else a
+              sf.write(f"out/ref/seed{s}.wav", a.reshape(-1), m.sampling_rate)
+              print("seed", s, f"{time.time()-t:.1f}s", flush=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: voice-ref, path: out/ref, retention-days: 3}
