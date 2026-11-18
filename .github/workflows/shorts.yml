@@ -19,7 +19,7 @@ concurrency: {group: "yt-${{ (github.event.inputs.mode == 'long' || github.event
 jobs:
   short:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - name: Mode
@@ -41,6 +41,15 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg libraqm0 >/dev/null
           pip install -q -r requirements.txt
+      - name: VoiceStudio voice (cached)
+        if: steps.g.outputs.go == '1'
+        id: vc
+        uses: actions/cache@v4
+        with: {path: ~/vs, key: omnivoice-v1-${{ hashFiles('shorts/setup_omnivoice.sh') }}}
+      - name: Install VoiceStudio (first time only)
+        if: steps.g.outputs.go == '1' && steps.vc.outputs.cache-hit != 'true'
+        continue-on-error: true
+        run: OMNI_HOME=$HOME/vs sh shorts/setup_omnivoice.sh || rm -rf $HOME/vs
       - name: Make + upload Short
         if: steps.g.outputs.go == '1'
         run: python yt.py ${{ steps.m.outputs.mode }} ${{ github.event.inputs.dry == '1' && '--dry' || '' }}
@@ -49,6 +58,10 @@ jobs:
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
           FORCE: ${{ github.event.inputs.force }}
+          TTS_ENGINE: omnivoice
+          OMNIVOICE_PY: /home/runner/vs/venv/bin/python
+          OMNIVOICE_MODEL: /home/runner/vs/model
+          OMNIVOICE_INSTRUCT: "male, young adult"
       - name: Keep preview
         if: steps.g.outputs.go == '1' && always()
         uses: actions/upload-artifact@v4

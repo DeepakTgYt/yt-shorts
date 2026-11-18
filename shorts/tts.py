@@ -125,7 +125,14 @@ def _omnivoice(lines, voice, outs):
 
 
 def synth(lines, engine="edge", voice="female"):
-    """Return list of 48 kHz mono wav paths, one per line (cached)."""
+    """Return list of 48 kHz mono wav paths, one per line (cached).
+    TTS_ENGINE=omnivoice switches every voice to VoiceStudio's OmniVoice; falls back to Edge if it fails."""
+    want = os.environ.get("TTS_ENGINE", engine)
+    if want == "omnivoice" and engine != "omnivoice":
+        try:
+            return synth(lines, "omnivoice", voice)
+        except Exception as e:
+            print("omnivoice failed, using edge:", e, flush=True)
     d = os.path.join(CACHE, engine)
     os.makedirs(d, exist_ok=True)
     tag = voice + (EDGE_RATE + ("|h2" if HUMAN else "") if engine == "edge" else f"{OMNI_INSTRUCT}|{OMNI_STEPS}")
