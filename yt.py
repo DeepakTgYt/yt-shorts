@@ -499,8 +499,9 @@ def long_today(L):
     return len([e for e in L["log"] if e[0].startswith(d) and e[3] != "dryrun"])
 
 
-def pick_long(L, parse=True):
-    """Fresh (72 h) big recruitments not yet made into a long video, biggest first."""
+def pick_long(L, parse=True, relax=False):
+    """Fresh (72 h) big recruitments not yet made into a long video, biggest first.
+    relax=True (dry test runs only): also consider already-made / older posts."""
     if parse:
         import explainer
     cands = []
@@ -511,7 +512,7 @@ def pick_long(L, parse=True):
             print("scrape fail", theme, e); continue
         cut = (datetime.now(timezone.utc) - timedelta(hours=72)).isoformat()[:19]
         for it in items:
-            if it["key"] in L["posted"] or (it["date"] and it["date"] < cut):
+            if not relax and (it["key"] in L["posted"] or (it["date"] and it["date"] < cut)):
                 continue
             title = vac_title(it["text"]); n = post_count(it["text"], title)
             if n < LONG_MIN:
@@ -535,6 +536,8 @@ def do_long(s):
     if long_today(L) >= LONG_CAP and os.environ.get("FORCE") != "1":
         print("long cap"); return None
     cands = pick_long(L)
+    if not cands and DRY and os.environ.get("FORCE") == "1":
+        print("dry test: no fresh big job, using an older one"); cands = pick_long(L, relax=True)
     if not cands:
         print("no big job with enough detail for a long video"); return None
     n, _, it, d, full = cands[0]
