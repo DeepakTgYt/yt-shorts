@@ -41,13 +41,21 @@ jobs:
       - name: Install
         if: steps.g.outputs.go == '1'
         run: |
-          sudo rm -f /var/lib/man-db/auto-update  # slow man-db trigger on hosted runners
-          for i in 1 2 3; do
-            timeout 300 sh -c 'sudo apt-get update -qq -o Acquire::Retries=3 -o Acquire::http::Timeout=30 && sudo apt-get install -y -qq --no-install-recommends -o Acquire::Retries=3 ffmpeg libraqm0 >/dev/null' && break
-            echo "apt slow/failed, retry $i"; sleep 5
-          done
-          command -v ffmpeg
+          # no apt by default: apt on hosted runners randomly stalls 7-25 min
+          mkdir -p $HOME/bin
+          if curl -fsSL --retry 3 --max-time 180 -o /tmp/ff.tar.xz https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz; then
+            tar -xJf /tmp/ff.tar.xz -C /tmp && cp /tmp/ffmpeg-master-latest-linux64-gpl/bin/ff* $HOME/bin/ && echo "$HOME/bin" >> $GITHUB_PATH
+          fi
+          export PATH=$HOME/bin:$PATH
           pip install -q -r requirements.txt
+          need=""
+          command -v ffmpeg >/dev/null || need="ffmpeg"
+          python -c "from PIL import features; assert features.check('raqm')" 2>/dev/null || need="$need libraqm0 libfribidi0"
+          if [ -n "$need" ]; then
+            echo "apt fallback for: $need"; sudo rm -f /var/lib/man-db/auto-update
+            sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends $need >/dev/null
+          fi
+          ffmpeg -hide_banner -version >/dev/null && command -v ffmpeg
       - name: VoiceStudio voice (cached)
         if: steps.g.outputs.go == '1'
         id: vc
