@@ -45,7 +45,9 @@ jobs:
         if: steps.g.outputs.go == '1'
         id: vc
         uses: actions/cache@v4
-        with: {path: ~/vs, key: omnivoice-v1-${{ hashFiles('shorts/setup_omnivoice.sh') }}}
+        with:
+          path: ~/vs
+          key: omnivoice-v1-${{ hashFiles('shorts/setup_omnivoice.sh') }}
       - name: Install VoiceStudio (first time only)
         if: steps.g.outputs.go == '1' && steps.vc.outputs.cache-hit != 'true'
         continue-on-error: true
