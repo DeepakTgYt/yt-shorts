@@ -123,6 +123,13 @@
    "ssc",
    "36221IQI-Mw",
    "bold"
+  ],
+  [
+   "2026-11-18T17:32+05:30",
+   "limit",
+   "quiz",
+   "",
+   ""
   ]
  ],
  "slots": [
@@ -131,9 +138,11 @@
   "2026-11-18 09:00",
   "2026-11-18 10:30",
   "2026-11-18 12:00",
-  "2026-11-18 13:30"
+  "2026-11-18 13:30",
+  "2026-11-18 17:30"
  ],
  "n": 9,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
- "welcome_vid": "DdmnU_TUmGg"
+ "welcome_vid": "DdmnU_TUmGg",
+ "upload_block_until": "2026-11-18T18:32+05:30"
 }
