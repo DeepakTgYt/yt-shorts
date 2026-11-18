@@ -23,6 +23,8 @@ OMNI_PY = os.environ.get("OMNIVOICE_PY", "/tmp/vs/venv/bin/python")
 OMNI_MODEL = os.environ.get("OMNIVOICE_MODEL", "/tmp/vs/model")
 OMNI_INSTRUCT = os.environ.get("OMNIVOICE_INSTRUCT", "female, young adult")
 OMNI_STEPS = os.environ.get("OMNIVOICE_STEPS", "16")
+# one fixed reference voice (cloned for every line, so the speaker never changes mid-video)
+OMNI_REF = os.environ.get("OMNIVOICE_REF", os.path.join(HERE, "assets", "voice_ref.wav"))
 
 EDGE_RATE = os.environ.get("EDGE_RATE", "+4%")
 HUMAN = os.environ.get("TTS_HUMAN", "1") == "1"
@@ -120,7 +122,7 @@ def _omnivoice(lines, voice, outs):
         jp = os.path.join(td, "jobs.json")
         json.dump(jobs, open(jp, "w"), ensure_ascii=False)
         subprocess.run([OMNI_PY, os.path.join(HERE, "omnivoice_runner.py"), OMNI_MODEL, jp,
-                        instruct, OMNI_STEPS], check=True)
+                        instruct, OMNI_STEPS, OMNI_REF], check=True)
         for j, o in zip(jobs, outs):
             _to_wav48(j["out"], o)
 
@@ -136,7 +138,7 @@ def synth(lines, engine="edge", voice="female"):
             print("omnivoice failed, using edge:", e, flush=True)
     d = os.path.join(CACHE, engine)
     os.makedirs(d, exist_ok=True)
-    tag = voice + (EDGE_RATE + ("|h2" if HUMAN else "") if engine == "edge" else f"{OMNI_INSTRUCT}|{OMNI_STEPS}")
+    tag = voice + (EDGE_RATE + ("|h2" if HUMAN else "") if engine == "edge" else f"{OMNI_INSTRUCT}|{OMNI_STEPS}|{os.path.exists(OMNI_REF)}")
     outs = [os.path.join(d, _key(engine, tag, t) + ".wav") for t in lines]
     todo = [(t, o) for t, o in zip(lines, outs) if not os.path.exists(o)]
     if todo:
