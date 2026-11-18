@@ -4,7 +4,8 @@
   "https://t.me/Bihar_Job_Notification_Quiz/150"
  ],
  "used_q": [
-  82
+  82,
+  392
  ],
  "fps": [
   {
@@ -66,12 +67,20 @@
    "army",
    "lOc1FY0eyYU",
    "bold"
+  ],
+  [
+   "2026-11-18T08:22+05:30",
+   "quiz",
+   "ssc",
+   "RD0BQzzFcZM",
+   "ocean"
   ]
  ],
  "slots": [
-  "2026-11-17 20:30"
+  "2026-11-17 20:30",
+  "2026-11-18 07:30"
  ],
- "n": 4,
+ "n": 5,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg"
 }
