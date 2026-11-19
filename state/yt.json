@@ -5,7 +5,8 @@
   "https://t.me/Railway_Job_Notification_Quiz/156",
   "https://t.me/Bihar_Job_Notification_Quiz/137",
   "https://t.me/SSC_Job_Alert/164",
-  "https://t.me/SSC_Job_Alert/169"
+  "https://t.me/SSC_Job_Alert/169",
+  "https://t.me/SSC_Job_Alert/185"
  ],
  "used_q": [
   82,
@@ -85,6 +86,20 @@
     "ranchi",
     "resident",
     "warden"
+   ],
+   "t": "2026-11-19"
+  },
+  {
+   "n": 0,
+   "w": [
+    "authority",
+    "district",
+    "grade",
+    "legal",
+    "mirzapur",
+    "offline",
+    "services",
+    "stenographer"
    ],
    "t": "2026-11-19"
   }
@@ -208,6 +223,13 @@
    "bihar",
    "h3acPqxSfgY",
    "ocean"
+  ],
+  [
+   "2026-11-19T15:40+05:30",
+   "vacancy",
+   "ssc",
+   "Zm-JedZmLrg",
+   "classic"
   ]
  ],
  "slots": [
@@ -224,9 +246,10 @@
   "2026-11-19 09:00",
   "2026-11-19 10:30",
   "2026-11-19 12:00",
-  "2026-11-19 13:30"
+  "2026-11-19 13:30",
+  "2026-11-19 15:30"
  ],
- "n": 15,
+ "n": 16,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg",
  "upload_block_until": "2026-11-18T20:02+05:30"
