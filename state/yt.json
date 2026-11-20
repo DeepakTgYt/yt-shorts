@@ -9,7 +9,8 @@
   "https://t.me/SSC_Job_Alert/185",
   "https://t.me/Bihar_Job_Notification_Quiz/164",
   "https://t.me/Railway_Job_Notification_Quiz/187",
-  "https://t.me/SSC_Job_Alert/201"
+  "https://t.me/SSC_Job_Alert/201",
+  "https://t.me/SSC_Job_Alert/219"
  ],
  "used_q": [
   82,
@@ -145,6 +146,15 @@
     "supervisor",
     "technical",
     "weaving"
+   ],
+   "t": "2026-11-20"
+  },
+  {
+   "n": 29,
+   "w": [
+    "csir",
+    "driver",
+    "mts"
    ],
    "t": "2026-11-20"
   }
@@ -352,6 +362,13 @@
    "bihar",
    "baUfmV091jc",
    "neon"
+  ],
+  [
+   "2026-11-20T20:44+05:30",
+   "vacancy",
+   "ssc",
+   "bXh7ehNQ4m8",
+   "paper"
   ]
  ],
  "slots": [
@@ -380,9 +397,10 @@
   "2026-11-20 13:30",
   "2026-11-20 15:30",
   "2026-11-20 17:30",
-  "2026-11-20 19:00"
+  "2026-11-20 19:00",
+  "2026-11-20 20:30"
  ],
- "n": 27,
+ "n": 28,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg",
  "upload_block_until": "2026-11-18T20:02+05:30"
