@@ -11,7 +11,8 @@
   "https://t.me/Railway_Job_Notification_Quiz/187",
   "https://t.me/SSC_Job_Alert/201",
   "https://t.me/SSC_Job_Alert/219",
-  "https://t.me/SSC_Job_Alert/205"
+  "https://t.me/SSC_Job_Alert/205",
+  "https://t.me/Railway_Job_Notification_Quiz/203"
  ],
  "used_q": [
   82,
@@ -171,6 +172,22 @@
     "india",
     "offline",
     "registrar"
+   ],
+   "t": "2026-11-21"
+  },
+  {
+   "n": 0,
+   "w": [
+    "absent",
+    "candidates",
+    "central",
+    "download",
+    "group",
+    "list",
+    "out",
+    "pdf",
+    "railway",
+    "rrc"
    ],
    "t": "2026-11-21"
   }
@@ -420,6 +437,13 @@
    "ssc",
    "Ghzxb6DRv1o",
    "paper"
+  ],
+  [
+   "2026-11-21T15:37+05:30",
+   "vacancy",
+   "railway",
+   "rj9441LM6y0",
+   "bold"
   ]
  ],
  "slots": [
@@ -454,9 +478,10 @@
   "2026-11-21 09:00",
   "2026-11-21 10:30",
   "2026-11-21 12:00",
-  "2026-11-21 13:30"
+  "2026-11-21 13:30",
+  "2026-11-21 15:30"
  ],
- "n": 33,
+ "n": 34,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg",
  "upload_block_until": "2026-11-18T20:02+05:30"
