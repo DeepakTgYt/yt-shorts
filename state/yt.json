@@ -10,7 +10,8 @@
   "https://t.me/Bihar_Job_Notification_Quiz/164",
   "https://t.me/Railway_Job_Notification_Quiz/187",
   "https://t.me/SSC_Job_Alert/201",
-  "https://t.me/SSC_Job_Alert/219"
+  "https://t.me/SSC_Job_Alert/219",
+  "https://t.me/SSC_Job_Alert/205"
  ],
  "used_q": [
   82,
@@ -159,6 +160,17 @@
     "mts"
    ],
    "t": "2026-11-20"
+  },
+  {
+   "n": 0,
+   "w": [
+    "cpo",
+    "ernet",
+    "india",
+    "offline",
+    "registrar"
+   ],
+   "t": "2026-11-21"
   }
  ],
  "log": [
@@ -385,6 +397,13 @@
    "bihar",
    "oygYm0QSPXk",
    "ocean"
+  ],
+  [
+   "2026-11-21T10:36+05:30",
+   "vacancy",
+   "ssc",
+   "cmLi1ES8LQA",
+   "classic"
   ]
  ],
  "slots": [
@@ -416,9 +435,10 @@
   "2026-11-20 19:00",
   "2026-11-20 20:30",
   "2026-11-21 07:30",
-  "2026-11-21 09:00"
+  "2026-11-21 09:00",
+  "2026-11-21 10:30"
  ],
- "n": 30,
+ "n": 31,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg",
  "upload_block_until": "2026-11-18T20:02+05:30"
