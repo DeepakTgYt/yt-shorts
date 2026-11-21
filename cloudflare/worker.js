@@ -2,6 +2,8 @@
 // Cron: every 10 min. Token for GitHub lives in KV "gh_token" (set once via /setup?k=SETUP_KEY) or env GH_TOKEN.
 const REPO = "DeepakTgYt/yt-shorts";
 const WF = "shorts.yml";
+// daily long practice sets: dispatched 2 h before their publish time (they upload scheduled with publishAt)
+const SETS = { "05:00": "ca", "08:00": "set_army", "10:00": "set_bihar", "14:00": "set_railway", "17:00": "set_ssc" };
 const SLOTS = ["07:30", "09:00", "10:30", "12:00", "13:30", "15:30", "17:30", "19:00", "20:30"];
 const CHANNELS = ["SSC_Job_Alert", "Railway_Job_Notification_Quiz", "Bihar_Job_Notification_Quiz", "Army_Agniveer_Bharti_Alert"];
 
@@ -79,6 +81,10 @@ export default {
     if (SLOTS.includes(hm) && !(await env.KV.get(`slot:${day} ${hm}`))) {
       await env.KV.put(`slot:${day} ${hm}`, "1", { expirationTtl: 3 * 86400 });
       ctx.waitUntil(dispatch(env, "auto", `slot ${hm} IST`));
+    }
+    if (SETS[hm] && !(await env.KV.get(`set:${day} ${hm}`))) {
+      await env.KV.put(`set:${day} ${hm}`, "1", { expirationTtl: 3 * 86400 });
+      ctx.waitUntil(dispatch(env, SETS[hm], `practice set ${hm} IST`));
     }
     if (hh >= 7 && hh < 23) ctx.waitUntil(breakingCheck(env));
   },

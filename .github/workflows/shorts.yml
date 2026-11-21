@@ -5,9 +5,10 @@ on:
     - cron: "38 3,6,13 * * *"          # 09:08 12:08 19:08 IST
     - cron: "50 1-17/2 * * *"          # long job-detail video backup check (Worker dispatches instantly)
     - cron: "20 2-17/3 * * *"          # breaking (1000+ posts) backup check
+    - cron: "50 0,3,5,9,12 * * *"      # 06:20 09:20 11:20 15:20 18:20 IST practice-set backup (Worker dispatches 2 h early)
   workflow_dispatch:
     inputs:
-      mode: {description: "auto | quiz | vacancy | breaking | welcome | long", required: true, default: auto}
+      mode: {description: "auto | quiz | vacancy | breaking | welcome | long | ca | set_ssc | set_railway | set_bihar | set_army", required: true, default: auto}
       force: {description: "1 = ignore slot/time/caps", required: false, default: "0"}
       retry: {description: "internal: retry count", required: false, default: "0"}
       dry: {description: "1 = render only, no upload", required: false, default: "0"}
@@ -17,11 +18,11 @@ permissions:
   contents: write
   issues: write
   actions: write
-concurrency: {group: "yt-${{ (github.event.inputs.mode == 'long' || github.event.schedule == '50 1-17/2 * * *') && 'long' || 'shorts' }}", cancel-in-progress: false}
+concurrency: {group: "yt-${{ (github.event.inputs.mode == 'long' || startsWith(github.event.inputs.mode, 'set') || github.event.inputs.mode == 'ca' || github.event.schedule == '50 1-17/2 * * *' || github.event.schedule == '50 0,3,5,9,12 * * *') && 'long' || 'shorts' }}", cancel-in-progress: false}
 jobs:
   short:
     runs-on: ubuntu-latest
-    timeout-minutes: 150  # long videos with OmniVoice take ~45 min
+    timeout-minutes: 180  # long videos with OmniVoice take ~45 min
     steps:
       - uses: actions/checkout@v4
       - name: Mode
@@ -29,7 +30,10 @@ jobs:
         run: |
           if [ -n "${{ github.event.inputs.mode }}" ]; then m="${{ github.event.inputs.mode }}";
           elif [ "${{ github.event.schedule }}" = "20 2-17/3 * * *" ]; then m=breaking;
-          elif [ "${{ github.event.schedule }}" = "50 1-17/2 * * *" ]; then m=long; else m=auto; fi
+          elif [ "${{ github.event.schedule }}" = "50 1-17/2 * * *" ]; then m=long;
+          elif [ "${{ github.event.schedule }}" = "50 0,3,5,9,12 * * *" ]; then
+            m=$(python3 -c "import datetime as d;h=(d.datetime.utcnow()+d.timedelta(hours=5,minutes=30)).hour;print({6:'ca',9:'set_army',11:'set_bihar',15:'set_railway',18:'set_ssc'}.get(h,'set'))");
+          else m=auto; fi
           echo "mode=$m" >> $GITHUB_OUTPUT
       - name: Gate (anything to do?)
         id: g

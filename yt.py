@@ -32,6 +32,15 @@ SLOTS = [("07:30", "quiz"), ("09:00", "quiz"), ("10:30", "vacancy"), ("12:00", "
 LONG_MIN = 500      # "bada bharti": at least this many posts
 LONG_CAP = 4        # safety cap per day (Actions minutes)
 LONG_STATE = os.path.join(HERE, "state", "long.json")
+# Daily long practice sets (16:9), each published at its own IST time (rendered ~2 h early, scheduled with publishAt).
+# Worker dispatches mode set_<theme> / ca at SET_SLOTS minus 2 h.  Each exam has its own playlist.
+SET_N = 10
+SET_SLOTS = {"ca": "07:00", "army": "10:00", "bihar": "12:00", "railway": "16:00", "ssc": "19:00"}
+SET_NAMES = {"ssc": ("SSC", "SSC GD, CGL, MTS, CHSL"), "railway": ("Railway", "RRB NTPC, Group D, ALP"),
+             "bihar": ("Bihar", "Bihar Police, BPSC, BSSC"), "army": ("Agniveer", "Army Agniveer GD")}
+PLAYLISTS = {"ssc": "SSC GK Practice Set | SSC GD, CGL, MTS PYQ", "railway": "Railway GK Practice Set | RRB NTPC, Group D PYQ",
+             "bihar": "Bihar GK Practice Set | Bihar Police, BPSC PYQ", "army": "Agniveer GK Practice Set | Army GD PYQ",
+             "ca": "Daily Current Affairs Quiz | रोज़ का करेंट अफेयर्स"}
 DAILY_CAP, BREAKING_CAP = 10, 3
 LIMIT_COOLDOWN_H = 1  # YouTube "uploadLimitExceeded": pause uploads this long instead of retry + issue spam
 
@@ -330,7 +339,7 @@ def channel_url(s):
     return s["channel_url"]
 
 
-def upload(mp4, thumb, title, desc, tags):
+def upload(mp4, thumb, title, desc, tags, publish_at=None):
     title = title[:100]
     if DRY:
         print("DRY RUN upload:", title, "\n", desc[:500]); return "dryrun"
@@ -338,6 +347,9 @@ def upload(mp4, thumb, title, desc, tags):
                         "defaultLanguage": "hi", "defaultAudioLanguage": "hi"},
             "status": {"privacyStatus": "public", "selfDeclaredMadeForKids": False,
                        "containsSyntheticMedia": os.environ.get("SYNTHETIC_FLAG", "1") == "1"}}
+    if publish_at and publish_at > datetime.now(timezone.utc) + timedelta(minutes=10):  # scheduled premiere time
+        meta["status"]["privacyStatus"] = "private"
+        meta["status"]["publishAt"] = publish_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
     size = os.path.getsize(mp4)
     vid = None
     for attempt in range(4):
@@ -506,7 +518,7 @@ def save_long(L):
 
 def long_today(L):
     d = now().strftime("%Y-%m-%d")
-    return len([e for e in L["log"] if e[0].startswith(d) and e[3] != "dryrun"])
+    return len([e for e in L["log"] if e[0].startswith(d) and e[1] == "long" and e[3] != "dryrun"])
 
 
 def pick_long(L, parse=True, relax=False):
@@ -592,6 +604,147 @@ def do_long(s):
     return ["long", theme, vid, f"{info['duration_s']}s"]
 
 
+def set_theme(mode):
+    """set (rotating, old) | set_ssc | set_railway | set_bihar | set_army | ca"""
+    if mode == "ca":
+        return "ca"
+    th = mode[4:] if mode.startswith("set_") else ""
+    if th in SET_NAMES:
+        return th
+    # plain "set": the next exam whose slot is still ahead today, else ssc
+    hm = now().strftime("%H:%M")
+    for th in ("army", "bihar", "railway", "ssc"):
+        if SET_SLOTS[th] > hm:
+            return th
+    return "ssc"
+
+
+def set_due(L, theme):
+    d = now().strftime("%Y-%m-%d")
+    done = any(e[0].startswith(d) and e[1] == "set" and e[2] == theme and e[3] != "dryrun" for e in L["log"])
+    if done:
+        return False
+    h, m = map(int, SET_SLOTS[theme].split(":"))
+    start = now().replace(hour=h, minute=m, second=0, microsecond=0) - timedelta(hours=2, minutes=30)
+    return start <= now() < now().replace(hour=23, minute=0)
+
+
+def slot_time(theme):
+    h, m = map(int, SET_SLOTS[theme].split(":"))
+    return now().replace(hour=h, minute=m, second=0, microsecond=0)
+
+
+def playlist_add(L, theme, vid):
+    """Exam-wise playlists (created once, ids kept in state/long.json). Never blocks the upload."""
+    if DRY or not vid or vid == "dryrun":
+        return
+    try:
+        pl = L.setdefault("playlists", {})
+        if theme not in pl:
+            r = api("POST", "https://www.googleapis.com/youtube/v3/playlists?part=snippet,status", json.dumps({
+                "snippet": {"title": PLAYLISTS[theme], "defaultLanguage": "hi",
+                            "description": "रोज़ नया प्रैक्टिस सेट: पिछली परीक्षाओं के असली सवाल, जवाब और व्याख्या के साथ। "
+                                           f"हर नई भर्ती का नोटिफिकेशन 5–8 मिनट में Telegram पर: {TG_HUB}"},
+                "status": {"privacyStatus": "public"}}).encode())
+            pl[theme] = r["id"]; print("playlist created", theme, r["id"])
+        api("POST", "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet", json.dumps({
+            "snippet": {"playlistId": pl[theme], "position": 0,
+                        "resourceId": {"kind": "youtube#video", "videoId": vid}}}).encode())
+        print("added to playlist", theme)
+    except Exception as e:
+        body = e.read().decode()[:300] if hasattr(e, "read") else str(e)[:300]
+        print("playlist skipped:", body)
+        L.setdefault("playlist_err", []).append([now().strftime("%Y-%m-%d %H:%M"), theme, body[:120]])
+        L["playlist_err"] = L["playlist_err"][-20:]
+
+
+def ca_questions(L):
+    """Current-affairs bank (bank/ca.json, filled weekly with checked facts): newest unused first."""
+    try:
+        bank = json.load(open(os.path.join(HERE, "bank", "ca.json"), encoding="utf-8"))
+    except Exception:
+        bank = []
+    used = set(L.setdefault("ca_used", []))
+    cut = (now() - timedelta(days=45)).strftime("%Y-%m-%d")
+    pool = [x for x in bank if x["q"] not in used and x.get("date", "9999") >= cut]
+    pool.sort(key=lambda x: x.get("date", ""), reverse=True)
+    return pool[:SET_N]
+
+
+def do_set(s, theme):
+    """One long practice set of SET_N questions (never repeats a question across sets), scheduled at its slot."""
+    import quizset
+    L = load_long()
+    L.setdefault("set_used", []); L.setdefault("set_no", {})
+    if isinstance(L["set_no"], int):
+        L["set_no"] = {}
+    if not set_due(L, theme) and os.environ.get("FORCE") != "1":
+        print("set", theme, "already done today / not time yet"); return None
+    no = L["set_no"].get(theme, 0) + 1
+    if theme == "ca":
+        picked = ca_questions(L)
+        if len(picked) < 6:
+            print("current affairs bank empty: add bank/ca.json"); return None
+        qs = [{"q": x["q"], "o": x["o"], "a": x["a"], "ex": short_expl(x.get("e") or "", 120), "src": x.get("src", "")}
+              for x in picked]
+        ch_theme = ORDER[no % 4]
+        day = now().strftime("%d") + " " + ["जनवरी", "फ़रवरी", "मार्च", "अप्रैल", "मई", "जून", "जुलाई", "अगस्त", "सितंबर",
+                                            "अक्टूबर", "नवंबर", "दिसंबर"][now().month - 1]
+        d = {"channel": ch_theme, "set_no": no, "questions": qs, "title_line": f"करेंट अफेयर्स क्विज़ {day}",
+             "exam_line": "SSC, Railway, Bihar, Army सभी परीक्षाओं के लिए", "thumb_line": "करेंट अफेयर्स",
+             "pill": now().strftime("%d.%m.%Y"), "intro_kind": "ca"}
+        title = f"Current Affairs Quiz {now().strftime('%d %B %Y')} | {len(qs)} जरूरी सवाल | SSC Railway Bihar Army"
+        head = [f"📰 {now().strftime('%d.%m.%Y')} करेंट अफेयर्स क्विज़: {len(qs)} जरूरी सवाल, जवाब और छोटी व्याख्या के साथ।"]
+        tags_extra = ["current affairs quiz", "current affairs today", "daily current affairs", "current affairs hindi",
+                      "करेंट अफेयर्स", "gk quiz hindi"]
+        tag_theme = "ssc"
+    else:
+        bank = json.load(open(os.path.join(HERE, "bank", "quiz.json")))
+        used = set(L["set_used"])
+        ok = lambda x: bool(re.search("[\u0900-\u097F]", x["q"])) and len(x["q"]) <= 160 and max(len(o) for o in x["o"]) <= 40
+        same = [i for i, x in enumerate(bank) if x.get("exam") == theme and ok(x) and i not in used]
+        vvi = [i for i in same if "महत्वपूर्ण" in (bank[i].get("src") or "") or bank[i].get("vvi")]
+        if len(same) < SET_N:  # exam pool used up: start a revision round of this exam's questions
+            L["set_used"] = [i for i in L["set_used"] if bank[i].get("exam") != theme] if len(L["set_used"]) else []
+            used = set(L["set_used"]); same = [i for i, x in enumerate(bank) if x.get("exam") == theme and ok(x) and i not in used]
+            vvi = []
+        if len(same) < SET_N:
+            raise RuntimeError(f"question bank too small for {theme} practice sets")
+        random.seed(f"set{theme}{no}")
+        k_v = min(len(vvi), 3)  # up to 3 'likely' questions per set, rest real PYQs
+        pick = random.sample(vvi, k_v) + random.sample([i for i in same if i not in vvi], SET_N - k_v) if \
+            len([i for i in same if i not in vvi]) >= SET_N - k_v else random.sample(same, SET_N)
+        random.shuffle(pick)
+        qs = [{"q": bank[i]["q"], "o": bank[i]["o"], "a": bank[i]["a"], "ex": short_expl(bank[i].get("e") or "", 120),
+               "src": bank[i].get("src", "")} for i in pick]
+        short, exams = SET_NAMES[theme]
+        ch_theme = theme
+        d = {"channel": theme, "set_no": no, "questions": qs, "title_line": f"{short} GK प्रैक्टिस सेट {no}",
+             "exam_line": f"{exams} के सबसे ज़रूरी सवाल", "thumb_line": f"{short} GK प्रैक्टिस सेट",
+             "pill": f"प्रैक्टिस सेट {no}"}
+        title = f"{short} GK Practice Set {no} | {SET_N} सबसे ज़रूरी PYQ सवाल | {exams.split(',')[0]} GK in Hindi"
+        head = [f"🧠 {short} GK प्रैक्टिस सेट {no}: {exams} के {SET_N} सबसे ज़रूरी सवाल, जवाब और छोटी व्याख्या के साथ।"]
+        tags_extra = [f"{short} gk practice set", f"{short} gk", "gk practice set", "pyq practice set", "gk quiz hindi",
+                      f"{short} pyq"]
+        tag_theme = theme
+    os.makedirs(OUT, exist_ok=True)
+    info = quizset.build(d, os.path.join(OUT, "set.mp4"), os.path.join(OUT, "set_thumb.jpg"), voice="male", music_i=no)
+    lines = head + [f"हर सवाल के बाद {quizset.THINK} सेकंड, जवाब सोचिए और अपना स्कोर कमेंट में लिखिए।", "", "📚 इस सेट के सवाल:"]
+    lines += [f"{k + 1}. {q['q']}" + (f" ({q['src']})" if q["src"] else "") for k, q in enumerate(qs)]
+    desc = description(ch_theme, lines, channel_url(s), kind="long")
+    tags = [t for t in tags_for(tag_theme, tags_extra) if t.lower() != "shorts"]
+    vid = upload(info["out"], info["thumb"], title, desc, tags, publish_at=slot_time(theme))
+    playlist_add(L, theme, vid)
+    if theme == "ca":
+        L["ca_used"] = (L["ca_used"] + [x["q"] for x in picked])[-3000:]
+    else:
+        L["set_used"] = (L["set_used"] + pick)[-4000:]
+    L["set_no"][theme] = no
+    L["log"].append([now().strftime("%Y-%m-%d %H:%M"), "set", theme, vid, f"set {no}", len(qs)])
+    if not DRY:
+        save_long(L)
+    return ["set", theme, vid, f"{info['duration_s']}s"]
+
 def do_welcome(s):
     if s.get("welcome_vid"):
         print("welcome already posted"); return None
@@ -621,6 +774,8 @@ def gate(mode):
     if mode == "long":
         L = load_long()
         return long_today(L) < LONG_CAP and bool(pick_long(L, parse=False))
+    if mode.startswith("set") or mode == "ca":
+        return set_due(load_long(), set_theme(mode))
     if mode == "auto":
         return due_slot(s) is not None
     if mode == "breaking":
@@ -653,14 +808,14 @@ def main():
         if not due and not force:
             print("no slot due"); return
         slot, mode = due or (now().strftime("%Y-%m-%d manual"), "quiz")
-    if not force:
+    if not force and not (mode.startswith("set") or mode == "ca"):  # sets render early, publish on schedule
         hr = now().hour
         if not (7 <= hr < 23):
             print("quiet hours"); return
         if mode == "breaking":
             if today_count(s, "breaking") >= BREAKING_CAP:
                 print("breaking cap"); return
-        elif mode != "long" and today_count(s) >= DAILY_CAP:
+        elif mode != "long" and not mode.startswith("set") and mode != "ca" and today_count(s) >= DAILY_CAP:
             print("daily cap"); return
     if slot:  # mark first, so a parallel backup run of the same slot skips
         s["slots"].append(slot)
@@ -674,11 +829,13 @@ def main():
             res = do_quiz(s)
         elif mode == "welcome":
             res = do_welcome(s)
+        elif mode.startswith("set") or mode == "ca":  # same own state file as long videos, never touches state.json
+            print(do_set(s, set_theme(mode))); return
         elif mode == "long":  # own state file (state/long.json), own concurrency group: never touches state.json
             print(do_long(s)); return
     except UploadLimit:
         print("YouTube upload limit reached: pausing uploads for", LIMIT_COOLDOWN_H, "h")
-        if mode == "long":
+        if mode == "long" or mode.startswith("set") or mode == "ca":
             return
         s["upload_block_until"] = (now() + timedelta(hours=LIMIT_COOLDOWN_H)).isoformat(timespec="minutes")
         s["log"].append([now().isoformat(timespec="minutes"), "limit", mode, "", ""])
