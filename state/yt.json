@@ -39,7 +39,8 @@
   283,
   678,
   244,
-  645
+  645,
+  188
  ],
  "fps": [
   {
@@ -498,6 +499,13 @@
    "railway",
    "_9PAZxurEwA",
    "paper"
+  ],
+  [
+   "2026-11-22T10:39+05:30",
+   "quiz",
+   "bihar",
+   "YEdfjm_PbCI",
+   "bold"
   ]
  ],
  "slots": [
@@ -538,9 +546,10 @@
   "2026-11-21 19:00",
   "2026-11-21 20:30",
   "2026-11-22 07:30",
-  "2026-11-22 09:00"
+  "2026-11-22 09:00",
+  "2026-11-22 10:30"
  ],
- "n": 38,
+ "n": 39,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg",
  "upload_block_until": "2026-11-21T20:05+05:30"
