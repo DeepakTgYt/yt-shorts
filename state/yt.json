@@ -13,7 +13,8 @@
   "https://t.me/SSC_Job_Alert/219",
   "https://t.me/SSC_Job_Alert/205",
   "https://t.me/Railway_Job_Notification_Quiz/203",
-  "https://t.me/SSC_Job_Alert/222"
+  "https://t.me/SSC_Job_Alert/222",
+  "https://t.me/Bihar_Job_Notification_Quiz/209"
  ],
  "used_q": [
   82,
@@ -212,6 +213,20 @@
     "welfare"
    ],
    "t": "2026-11-21"
+  },
+  {
+   "n": 0,
+   "w": [
+    "2024",
+    "aso",
+    "assistant",
+    "bihar",
+    "caretaker",
+    "open",
+    "sabha",
+    "vidhan"
+   ],
+   "t": "2026-11-22"
   }
  ],
  "log": [
@@ -522,6 +537,13 @@
    "ssc",
    "RJlYp8kpebg",
    "classic"
+  ],
+  [
+   "2026-11-22T15:37+05:30",
+   "vacancy",
+   "bihar",
+   "YcZrhfkbFxE",
+   "neon"
   ]
  ],
  "slots": [
@@ -565,9 +587,10 @@
   "2026-11-22 09:00",
   "2026-11-22 10:30",
   "2026-11-22 12:00",
-  "2026-11-22 13:30"
+  "2026-11-22 13:30",
+  "2026-11-22 15:30"
  ],
- "n": 41,
+ "n": 42,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg",
  "upload_block_until": "2026-11-21T20:05+05:30"
