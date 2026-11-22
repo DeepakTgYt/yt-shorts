@@ -41,7 +41,8 @@
   244,
   645,
   188,
-  41
+  41,
+  412
  ],
  "fps": [
   {
@@ -514,6 +515,13 @@
    "army",
    "Hf3lN5GXClE",
    "ocean"
+  ],
+  [
+   "2026-11-22T13:39+05:30",
+   "quiz",
+   "ssc",
+   "RJlYp8kpebg",
+   "classic"
   ]
  ],
  "slots": [
@@ -556,9 +564,10 @@
   "2026-11-22 07:30",
   "2026-11-22 09:00",
   "2026-11-22 10:30",
-  "2026-11-22 12:00"
+  "2026-11-22 12:00",
+  "2026-11-22 13:30"
  ],
- "n": 40,
+ "n": 41,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg",
  "upload_block_until": "2026-11-21T20:05+05:30"
