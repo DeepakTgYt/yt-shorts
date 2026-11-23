@@ -46,7 +46,8 @@
   412,
   128,
   54,
-  227
+  227,
+  639
  ],
  "fps": [
   {
@@ -568,6 +569,13 @@
    "ssc",
    "SYETThHL1dI",
    "ocean"
+  ],
+  [
+   "2026-11-23T07:38+05:30",
+   "quiz",
+   "railway",
+   "75iCAeBRndY",
+   "classic"
   ]
  ],
  "slots": [
@@ -615,9 +623,10 @@
   "2026-11-22 15:30",
   "2026-11-22 17:30",
   "2026-11-22 19:00",
-  "2026-11-22 20:30"
+  "2026-11-22 20:30",
+  "2026-11-23 07:30"
  ],
- "n": 45,
+ "n": 46,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg",
  "upload_block_until": "2026-11-21T20:05+05:30"
