@@ -15,7 +15,8 @@
   "https://t.me/Railway_Job_Notification_Quiz/203",
   "https://t.me/SSC_Job_Alert/222",
   "https://t.me/Bihar_Job_Notification_Quiz/209",
-  "https://t.me/Bihar_Job_Notification_Quiz/222"
+  "https://t.me/Bihar_Job_Notification_Quiz/222",
+  "https://t.me/SSC_Job_Alert/249"
  ],
  "used_q": [
   82,
@@ -246,6 +247,17 @@
     "laboratory",
     "shs",
     "technician"
+   ],
+   "t": "2026-11-23"
+  },
+  {
+   "n": 18,
+   "w": [
+    "hbch",
+    "mts",
+    "muzaffarpur",
+    "technician",
+    "walkin"
    ],
    "t": "2026-11-23"
   }
@@ -628,6 +640,13 @@
    "bihar",
    "RePZRjKa6Lc",
    "classic"
+  ],
+  [
+   "2026-11-23T15:41+05:30",
+   "vacancy",
+   "ssc",
+   "46U5XqYqnWo",
+   "neon"
   ]
  ],
  "slots": [
@@ -680,9 +699,10 @@
   "2026-11-23 09:00",
   "2026-11-23 10:30",
   "2026-11-23 12:00",
-  "2026-11-23 13:30"
+  "2026-11-23 13:30",
+  "2026-11-23 15:30"
  ],
- "n": 51,
+ "n": 52,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg",
  "upload_block_until": "2026-11-21T20:05+05:30"
