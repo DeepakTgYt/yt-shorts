@@ -75,6 +75,14 @@
    "ehQKbKgxtnU",
    "https://t.me/Bihar_Job_Notification_Quiz/222",
    1075
+  ],
+  [
+   "2026-11-23 15:16",
+   "set",
+   "railway",
+   "HYdnAkwbXFE",
+   "set 3",
+   10
   ]
  ],
  "set_used": [
@@ -147,10 +155,20 @@
   90,
   26,
   710,
-  711
+  711,
+  632,
+  651,
+  646,
+  641,
+  644,
+  638,
+  636,
+  657,
+  637,
+  640
  ],
  "set_no": {
-  "railway": 2,
+  "railway": 3,
   "ssc": 2,
   "army": 2,
   "bihar": 1
