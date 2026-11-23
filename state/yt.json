@@ -16,7 +16,8 @@
   "https://t.me/SSC_Job_Alert/222",
   "https://t.me/Bihar_Job_Notification_Quiz/209",
   "https://t.me/Bihar_Job_Notification_Quiz/222",
-  "https://t.me/SSC_Job_Alert/249"
+  "https://t.me/SSC_Job_Alert/249",
+  "https://t.me/Army_Agniveer_Bharti_Alert/227"
  ],
  "used_q": [
   82,
@@ -260,6 +261,18 @@
     "muzaffarpur",
     "technician",
     "walkin"
+   ],
+   "t": "2026-11-23"
+  },
+  {
+   "n": 446,
+   "w": [
+    "446",
+    "aircraft",
+    "apprentice",
+    "chandigarh",
+    "electrician",
+    "iaf"
    ],
    "t": "2026-11-23"
   }
@@ -663,6 +676,13 @@
    "railway",
    "dFbFXNSFox4",
    "bold"
+  ],
+  [
+   "2026-11-23T20:39+05:30",
+   "vacancy",
+   "army",
+   "O4U0YrKaYnE",
+   "ocean"
   ]
  ],
  "slots": [
@@ -718,9 +738,10 @@
   "2026-11-23 13:30",
   "2026-11-23 15:30",
   "2026-11-23 17:30",
-  "2026-11-23 19:00"
+  "2026-11-23 19:00",
+  "2026-11-23 20:30"
  ],
- "n": 54,
+ "n": 55,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg",
  "upload_block_until": "2026-11-21T20:05+05:30"
