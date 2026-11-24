@@ -19,7 +19,8 @@
   "https://t.me/SSC_Job_Alert/249",
   "https://t.me/Army_Agniveer_Bharti_Alert/227",
   "https://t.me/Railway_Job_Notification_Quiz/240",
-  "https://t.me/SSC_Job_Alert/263"
+  "https://t.me/SSC_Job_Alert/263",
+  "https://t.me/Railway_Job_Notification_Quiz/255"
  ],
  "used_q": [
   82,
@@ -303,6 +304,21 @@
     "mts",
     "offline",
     "technical"
+   ],
+   "t": "2026-11-24"
+  },
+  {
+   "n": 2008,
+   "w": [
+    "2008",
+    "act",
+    "apprentice",
+    "north",
+    "notification",
+    "out",
+    "railway",
+    "rrc",
+    "western"
    ],
    "t": "2026-11-24"
   }
@@ -755,6 +771,13 @@
    "ssc",
    "3VG7RhPNL3E",
    "classic"
+  ],
+  [
+   "2026-11-24T16:49+05:30",
+   "breaking",
+   "railway",
+   "Q0EXm60xyQw",
+   "neon"
   ]
  ],
  "slots": [
@@ -819,7 +842,7 @@
   "2026-11-24 13:30",
   "2026-11-24 15:30"
  ],
- "n": 61,
+ "n": 62,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg",
  "upload_block_until": "2026-11-21T20:05+05:30"
