@@ -18,7 +18,8 @@
   "https://t.me/Bihar_Job_Notification_Quiz/222",
   "https://t.me/SSC_Job_Alert/249",
   "https://t.me/Army_Agniveer_Bharti_Alert/227",
-  "https://t.me/Railway_Job_Notification_Quiz/240"
+  "https://t.me/Railway_Job_Notification_Quiz/240",
+  "https://t.me/SSC_Job_Alert/263"
  ],
  "used_q": [
   82,
@@ -290,6 +291,18 @@
     "group",
     "peon",
     "watchman"
+   ],
+   "t": "2026-11-24"
+  },
+  {
+   "n": 10,
+   "w": [
+    "assistant",
+    "iwst",
+    "ldc",
+    "mts",
+    "offline",
+    "technical"
    ],
    "t": "2026-11-24"
   }
@@ -735,6 +748,13 @@
    "army",
    "P3fmnHOKE5I",
    "ocean"
+  ],
+  [
+   "2026-11-24T15:44+05:30",
+   "vacancy",
+   "ssc",
+   "3VG7RhPNL3E",
+   "classic"
   ]
  ],
  "slots": [
@@ -796,9 +816,10 @@
   "2026-11-24 09:00",
   "2026-11-24 10:30",
   "2026-11-24 12:00",
-  "2026-11-24 13:30"
+  "2026-11-24 13:30",
+  "2026-11-24 15:30"
  ],
- "n": 60,
+ "n": 61,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg",
  "upload_block_until": "2026-11-21T20:05+05:30"
