@@ -20,7 +20,8 @@
   "https://t.me/Army_Agniveer_Bharti_Alert/227",
   "https://t.me/Railway_Job_Notification_Quiz/240",
   "https://t.me/SSC_Job_Alert/263",
-  "https://t.me/Railway_Job_Notification_Quiz/255"
+  "https://t.me/Railway_Job_Notification_Quiz/255",
+  "https://t.me/SSC_Job_Alert/265"
  ],
  "used_q": [
   82,
@@ -321,6 +322,18 @@
     "railway",
     "rrc",
     "western"
+   ],
+   "t": "2026-11-24"
+  },
+  {
+   "n": 6,
+   "w": [
+    "assistant",
+    "information",
+    "library",
+    "mts",
+    "nih",
+    "walkin"
    ],
    "t": "2026-11-24"
   }
@@ -794,10 +807,16 @@
    "army",
    "1rEJC7YLzYM",
    "bold"
+  ],
+  [
+   "2026-11-24T20:41+05:30",
+   "vacancy",
+   "ssc",
+   "B6BcegbSuMA",
+   "ocean"
   ]
  ],
  "slots": [
-  "2026-11-18 09:00",
   "2026-11-18 10:30",
   "2026-11-18 12:00",
   "2026-11-18 13:30",
@@ -856,9 +875,10 @@
   "2026-11-24 13:30",
   "2026-11-24 15:30",
   "2026-11-24 17:30",
-  "2026-11-24 19:00"
+  "2026-11-24 19:00",
+  "2026-11-24 20:30"
  ],
- "n": 64,
+ "n": 65,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg",
  "upload_block_until": "2026-11-21T20:05+05:30"
