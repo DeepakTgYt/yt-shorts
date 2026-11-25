@@ -22,7 +22,8 @@
   "https://t.me/SSC_Job_Alert/263",
   "https://t.me/Railway_Job_Notification_Quiz/255",
   "https://t.me/SSC_Job_Alert/265",
-  "https://t.me/Army_Agniveer_Bharti_Alert/240"
+  "https://t.me/Army_Agniveer_Bharti_Alert/240",
+  "https://t.me/SSC_Job_Alert/266"
  ],
  "used_q": [
   82,
@@ -349,6 +350,22 @@
     "bsf",
     "commandant",
     "offline"
+   ],
+   "t": "2026-11-25"
+  },
+  {
+   "n": 0,
+   "w": [
+    "accepted",
+    "assistant",
+    "download",
+    "list",
+    "out",
+    "pdf",
+    "rejected",
+    "ssc",
+    "technical",
+    "tentative"
    ],
    "t": "2026-11-25"
   }
@@ -864,10 +881,16 @@
    "railway",
    "eMsjUKUsMX8",
    "ocean"
+  ],
+  [
+   "2026-11-25T15:39+05:30",
+   "vacancy",
+   "ssc",
+   "8cn5bySlLMY",
+   "classic"
   ]
  ],
  "slots": [
-  "2026-11-18 20:30",
   "2026-11-19 07:30",
   "2026-11-19 09:00",
   "2026-11-19 10:30",
@@ -926,9 +949,10 @@
   "2026-11-25 09:00",
   "2026-11-25 10:30",
   "2026-11-25 12:00",
-  "2026-11-25 13:30"
+  "2026-11-25 13:30",
+  "2026-11-25 15:30"
  ],
- "n": 70,
+ "n": 71,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg",
  "upload_block_until": "2026-11-21T20:05+05:30"
