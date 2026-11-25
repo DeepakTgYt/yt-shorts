@@ -792,8 +792,29 @@ def gate(mode):
     return True
 
 
+def set_bio():
+    import json as _j
+    tok = access_token()
+    h = {"Authorization": "Bearer " + tok, "Content-Type": "application/json"}
+    r = urllib.request.urlopen(urllib.request.Request("https://www.googleapis.com/youtube/v3/channels?part=brandingSettings&mine=true", headers=h), timeout=30)
+    ch = _j.load(r)["items"][0]
+    bs = ch["brandingSettings"]
+    bs.setdefault("channel", {})["description"] = ("SSC, Railway, Bihar, Army की हर नई सरकारी भर्ती, क्विज़ और प्रैक्टिस सेट।\n\n"
+        "पूरी जानकारी और सभी लिंक: https://jobnotificationquiz.pages.dev")
+    body = _j.dumps({"id": ch["id"], "brandingSettings": {"channel": bs["channel"]}}).encode()
+    req = urllib.request.Request("https://www.googleapis.com/youtube/v3/channels?part=brandingSettings", data=body, headers=h, method="PUT")
+    print("bio updated", urllib.request.urlopen(req, timeout=30).status)
+
+
 def main():
     mode = next((a for a in sys.argv[1:] if not a.startswith("--")), "auto")
+    if mode == "bio":
+        if "--gate" in sys.argv:
+            print("go = True")
+            if os.environ.get("GITHUB_OUTPUT"):
+                open(os.environ["GITHUB_OUTPUT"], "a").write("go=1\n")
+            return
+        set_bio(); return
     if "--gate" in sys.argv:
         go = gate(mode)
         print("go =", go)

@@ -8,7 +8,7 @@ on:
     - cron: "50 0,3,5,9,12 * * *"      # 06:20 09:20 11:20 15:20 18:20 IST practice-set backup (Worker dispatches 2 h early)
   workflow_dispatch:
     inputs:
-      mode: {description: "auto | quiz | vacancy | breaking | welcome | long | ca | set_ssc | set_railway | set_bihar | set_army", required: true, default: auto}
+      mode: {description: "auto | bio | quiz | vacancy | breaking | welcome | long | ca | set_ssc | set_railway | set_bihar | set_army", required: true, default: auto}
       force: {description: "1 = ignore slot/time/caps", required: false, default: "0"}
       retry: {description: "internal: retry count", required: false, default: "0"}
       dry: {description: "1 = render only, no upload", required: false, default: "0"}
