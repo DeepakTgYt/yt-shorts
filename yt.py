@@ -20,7 +20,7 @@ OUT = os.path.join(HERE, "out")
 STATE = os.path.join(HERE, "state", "yt.json")
 IST = timezone(timedelta(hours=5, minutes=30))
 DRY = "--dry" in sys.argv or not os.environ.get("YT_REFRESH_TOKEN")
-TG_HUB = "https://tg.jobnotificationquiz.workers.dev/tg"
+TG_HUB = "https://jobnotificationquiz.pages.dev"
 CH = {"ssc": "SSC_Job_Alert", "railway": "Railway_Job_Notification_Quiz",
       "bihar": "Bihar_Job_Notification_Quiz", "army": "Army_Agniveer_Bharti_Alert"}
 CH_NAME = {"ssc": "SSC", "railway": "Railway", "bihar": "Bihar", "army": "Army/Agniveer"}

@@ -234,7 +234,7 @@ def cta_card(ch, acc, line2):
     return card([(hstack([pl, col], gap=22), "left")], CW, bg=hexc("#0E1726", 235), pad=(30, 26), gap=12)
 
 
-TG_HUB = "https://tg.jobnotificationquiz.workers.dev/tg"
+TG_HUB = "https://jobnotificationquiz.pages.dev"
 
 
 def qr_card(width=300):
