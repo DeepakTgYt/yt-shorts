@@ -26,7 +26,8 @@
   "https://t.me/SSC_Job_Alert/266",
   "https://t.me/Railway_Job_Notification_Quiz/285",
   "https://t.me/Bihar_Job_Notification_Quiz/281",
-  "https://t.me/Bihar_Job_Notification_Quiz/267"
+  "https://t.me/Bihar_Job_Notification_Quiz/267",
+  "https://t.me/SSC_Job_Alert/310"
  ],
  "used_q": [
   82,
@@ -422,6 +423,16 @@
     "scientist",
     "support",
     "technical"
+   ],
+   "t": "2026-11-27"
+  },
+  {
+   "n": 18,
+   "w": [
+    "grade",
+    "iii",
+    "mpsc",
+    "stenographer"
    ],
    "t": "2026-11-27"
   }
@@ -1063,10 +1074,16 @@
    "army",
    "u8zEVHPNezo",
    "paper"
+  ],
+  [
+   "2026-11-27T15:41+05:30",
+   "vacancy",
+   "ssc",
+   "dqZTvVx1t5I",
+   "bold"
   ]
  ],
  "slots": [
-  "2026-11-20 20:30",
   "2026-11-21 07:30",
   "2026-11-21 09:00",
   "2026-11-21 10:30",
@@ -1125,9 +1142,10 @@
   "2026-11-27 09:00",
   "2026-11-27 10:30",
   "2026-11-27 12:00",
-  "2026-11-27 13:30"
+  "2026-11-27 13:30",
+  "2026-11-27 15:30"
  ],
- "n": 88,
+ "n": 89,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg",
  "upload_block_until": "2026-11-21T20:05+05:30"
