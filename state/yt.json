@@ -29,7 +29,8 @@
   "https://t.me/Bihar_Job_Notification_Quiz/267",
   "https://t.me/SSC_Job_Alert/310",
   "https://t.me/Army_Agniveer_Bharti_Alert/279",
-  "https://t.me/Bihar_Job_Notification_Quiz/284"
+  "https://t.me/Bihar_Job_Notification_Quiz/284",
+  "https://t.me/Railway_Job_Notification_Quiz/313"
  ],
  "used_q": [
   82,
@@ -461,6 +462,17 @@
     "assistant",
     "bpsc",
     "professor"
+   ],
+   "t": "2026-11-28"
+  },
+  {
+   "n": 21,
+   "w": [
+    "northern",
+    "quota",
+    "railway",
+    "rrc",
+    "sports"
    ],
    "t": "2026-11-28"
   }
@@ -1165,10 +1177,16 @@
    "ssc",
    "JZuir0J4RV0",
    "neon"
+  ],
+  [
+   "2026-11-28T15:42+05:30",
+   "vacancy",
+   "railway",
+   "AVBjFECqg_w",
+   "paper"
   ]
  ],
  "slots": [
-  "2026-11-21 20:30",
   "2026-11-22 07:30",
   "2026-11-22 09:00",
   "2026-11-22 10:30",
@@ -1227,9 +1245,10 @@
   "2026-11-28 09:00",
   "2026-11-28 10:30",
   "2026-11-28 12:00",
-  "2026-11-28 13:30"
+  "2026-11-28 13:30",
+  "2026-11-28 15:30"
  ],
- "n": 97,
+ "n": 98,
  "channel_url": "https://www.youtube.com/@jobnotificationquiz",
  "welcome_vid": "DdmnU_TUmGg",
  "upload_block_until": "2026-11-21T20:05+05:30"
